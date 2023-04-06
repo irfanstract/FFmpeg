@@ -4,18 +4,18 @@ set -eo pipefail
 source $(dirname $0)/var.sh
 
 if [[ "$FFMPEG_ST" != "yes" ]]; then
-  mkdir -p wasm/packages/core/dist
-  EXPORTED_FUNCTIONS="[_main, _proxy_main]"
+  mkdir -p wasm/packages/core-mt/dist
+  EXPORTED_FUNCTIONS="[_main, __emscripten_proxy_main, _malloc]"
   EXTRA_FLAGS=(
     -pthread
     -s USE_PTHREADS=1                             # enable pthreads support
     -s PROXY_TO_PTHREAD=1                         # detach main() from browser/UI main thread
-    -o wasm/packages/core/dist/ffmpeg-core.js
+    -o wasm/packages/core-mt/dist/ffmpeg-core.js
 		-s INITIAL_MEMORY=1073741824                  # 1GB
   )
 else
   mkdir -p wasm/packages/core-st/dist
-  EXPORTED_FUNCTIONS="[_main]"
+  EXPORTED_FUNCTIONS="[_main, _malloc]"
   EXTRA_FLAGS=(
     -o wasm/packages/core-st/dist/ffmpeg-core.js
 		-s INITIAL_MEMORY=33554432                   # 32MB
@@ -35,7 +35,7 @@ FLAGS=(
   -s MODULARIZE=1                               # use modularized version to be more flexible
   -s EXPORT_NAME="createFFmpegCore"             # assign export name for browser
   -s EXPORTED_FUNCTIONS="$EXPORTED_FUNCTIONS"  # export main and proxy_main funcs
-  -s EXTRA_EXPORTED_RUNTIME_METHODS="[FS, cwrap, ccall, setValue, writeAsciiToMemory, lengthBytesUTF8, stringToUTF8, UTF8ToString]"   # export preamble funcs
+  -s EXPORTED_RUNTIME_METHODS="[FS, cwrap, ccall, setValue, writeAsciiToMemory, lengthBytesUTF8, stringToUTF8, UTF8ToString]"   # export preamble funcs
   --post-js wasm/src/post.js
   --pre-js wasm/src/pre.js
   $OPTIM_FLAGS
