@@ -1,11 +1,14 @@
 name: Build FFmpeg.wasm
 on:
+  workflow_dispatch:
+    # not restricted to any specific branch
   push:
     branches:
-      - n4.3.1-wasm
+      - build-wsm1
   pull_request:
     branches:
-      - n4.3.1-wasm
+      - build-wsm1
+    types: [opened, edited, reopened]
 
 env:
   FFMPEG_ST: no
