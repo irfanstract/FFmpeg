@@ -4141,12 +4141,12 @@ static int64_t getmaxrss(void)
 }
 
 static void init_variables() {
-  input_streams     = NULL;
-  nb_input_streams  = 0;
+//   input_streams     = NULL;
+//   nb_input_streams  = 0;
   input_files       = NULL;
   nb_input_files    = 0;
-  output_streams    = NULL;
-  nb_output_streams = 0;
+//   output_streams    = NULL;
+//   nb_output_streams = 0;
   output_files      = NULL;
   nb_output_files   = 0;
   filtergraphs      = NULL;
