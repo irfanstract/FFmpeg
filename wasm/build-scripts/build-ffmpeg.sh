@@ -24,6 +24,9 @@ else
   )
 fi
 FLAGS=(
+  # [https://github.com/irfanstract/FFmpeg/actions/runs/4635661813/jobs/8203513910#step:6:4319] 
+  -Xlinker -error-limit=0        # (don't forget the '-Xlinker' !!!)
+  # 
   -I. -I./fftools -I$BUILD_DIR/include
   -Llibavcodec -Llibavdevice -Llibavfilter -Llibavformat -Llibavresample -Llibavutil -Lharfbuzz -Llibass -Lfribidi -Llibpostproc -Llibswscale -Llibswresample -L$BUILD_DIR/lib
   -Wno-deprecated-declarations -Wno-pointer-sign -Wno-implicit-int-float-conversion -Wno-switch -Wno-parentheses -Qunused-arguments
