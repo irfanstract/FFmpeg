@@ -7,7 +7,6 @@ EXTRA_SOURCEFILES=()
 EXTRA_SOURCEFILES+=(
   fftools/objpool.c 
   fftools/sync_queue.c 
-  fftools/thread_queue.c   
   fftools/ffmpeg_demux.c       
   fftools/ffmpeg_mux.c        
   fftools/ffmpeg_mux_init.c   
@@ -24,6 +23,7 @@ if [[ "$FFMPEG_ST" != "yes" ]]; then
 		-s INITIAL_MEMORY=1073741824                  # 1GB
   )
   EXTRA_SOURCEFILES+=(
+    fftools/thread_queue.c   
   )
 else
   mkdir -p wasm/packages/core-st/dist
