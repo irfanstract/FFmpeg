@@ -3,6 +3,15 @@
 set -eo pipefail
 source $(dirname $0)/var.sh
 
+EXTRA_SOURCEFILES=()
+EXTRA_SOURCEFILES+=(
+  fftools/objpool.c 
+  fftools/sync_queue.c 
+  fftools/ffmpeg_demux.c       
+  fftools/ffmpeg_mux.c        
+  fftools/ffmpeg_mux_init.c   
+  fftools/opt_common.c 
+)
 if [[ "$FFMPEG_ST" != "yes" ]]; then
   mkdir -p wasm/packages/core-mt/dist
   EXPORTED_FUNCTIONS="[_main, __emscripten_proxy_main, _malloc]"
@@ -12,6 +21,9 @@ if [[ "$FFMPEG_ST" != "yes" ]]; then
     -s PROXY_TO_PTHREAD=1                         # detach main() from browser/UI main thread
     -o wasm/packages/core-mt/dist/ffmpeg-core.js
 		-s INITIAL_MEMORY=1073741824                  # 1GB
+  )
+  EXTRA_SOURCEFILES+=(
+    fftools/thread_queue.c   
   )
 else
   mkdir -p wasm/packages/core-st/dist
@@ -32,15 +44,7 @@ FLAGS=(
   -Xlinker "--start-group" # [https://stackoverflow.com/questions/45135/why-does-the-order-in-which-libraries-are-linked-sometimes-cause-errors-in-gcc] 
   -Llibavcodec -Llibavdevice -Llibavfilter -Llibavformat -Llibavresample -Llibavutil -Lharfbuzz -Llibass -Lfribidi -Llibpostproc -Llibswscale -Llibswresample -L$BUILD_DIR/lib
   -lavdevice -lavfilter -lavformat -lavcodec -lswresample -lswscale -lavutil -lpostproc -lm -lharfbuzz -lfribidi -lass -lx264 -lx265 -lvpx -lwavpack -lmp3lame -lfdk-aac -lvorbis -lvorbisenc -lvorbisfile -logg -ltheora -ltheoraenc -ltheoradec -lz -lfreetype -lopus -lwebp
-  # note: in version 5 the 'fftools' listing changed
-  fftools/objpool.c 
-  fftools/sync_queue.c 
-  fftools/thread_queue.c
-  fftools/ffmpeg_demux.c       
-  fftools/ffmpeg_mux.c        
-  fftools/ffmpeg_mux_init.c   
-  fftools/opt_common.c 
-  # before version 5 :
+  ${EXTRA_SOURCEFILES[@]}
   fftools/ffmpeg_opt.c fftools/ffmpeg_filter.c fftools/ffmpeg_hw.c fftools/cmdutils.c fftools/ffmpeg.c
   -Xlinker "--end-group"
   -s USE_SDL=2                                  # use SDL2
