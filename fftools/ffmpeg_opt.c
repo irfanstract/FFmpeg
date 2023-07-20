@@ -80,7 +80,6 @@ int debug_ts          = 0;
 int exit_on_error     = 0;
 int abort_on_flags    = 0;
 int print_stats       = -1;
-int qp_hist           = 0;
 int stdin_interaction = 1;
 float max_error_rate  = 2.0/3;
 char *filter_nbthreads;
@@ -653,13 +652,13 @@ const AVCodec *find_codec_or_die(void *logctx, const char *name,
     return codec;
 }
 
-void assert_file_overwrite(const char *filename)
+int assert_file_overwrite(const char *filename)
 {
     const char *proto_name = avio_find_protocol_name(filename);
 
     if (file_overwrite && no_file_overwrite) {
         fprintf(stderr, "Error, both -y and -n supplied. Exiting.\n");
-        exit_program(1);
+        return AVERROR(EINVAL);
     }
 
     if (!file_overwrite) {
@@ -671,13 +670,13 @@ void assert_file_overwrite(const char *filename)
                 signal(SIGINT, SIG_DFL);
                 if (!read_yesno()) {
                     av_log(NULL, AV_LOG_FATAL, "Not overwriting - exiting\n");
-                    exit_program(1);
+                    return AVERROR_EXIT;
                 }
                 term_init();
             }
             else {
                 av_log(NULL, AV_LOG_FATAL, "File '%s' already exists. Exiting.\n", filename);
-                exit_program(1);
+                return AVERROR_EXIT;
             }
         }
     }
@@ -690,10 +689,12 @@ void assert_file_overwrite(const char *filename)
              if (!strcmp(filename, file->ctx->url)) {
                  av_log(NULL, AV_LOG_FATAL, "Output %s same as Input #%d - exiting\n", filename, i);
                  av_log(NULL, AV_LOG_WARNING, "FFmpeg cannot edit existing files in-place.\n");
-                 exit_program(1);
+                 return AVERROR(EINVAL);
              }
         }
     }
+
+    return 0;
 }
 
 /* read file contents into a string */
@@ -1107,26 +1108,22 @@ static int opt_audio_qscale(void *optctx, const char *opt, const char *arg)
 
 static int opt_filter_complex(void *optctx, const char *opt, const char *arg)
 {
-    FilterGraph *fg = ALLOC_ARRAY_ELEM(filtergraphs, nb_filtergraphs);
-
-    fg->index      = nb_filtergraphs - 1;
-    fg->graph_desc = av_strdup(arg);
-    if (!fg->graph_desc)
+    char *graph_desc = av_strdup(arg);
+    if (!graph_desc)
         return AVERROR(ENOMEM);
+
+    fg_create(graph_desc);
 
     return 0;
 }
 
 static int opt_filter_complex_script(void *optctx, const char *opt, const char *arg)
 {
-    FilterGraph *fg;
     char *graph_desc = file_read(arg);
     if (!graph_desc)
         return AVERROR(EINVAL);
 
-    fg = ALLOC_ARRAY_ELEM(filtergraphs, nb_filtergraphs);
-    fg->index      = nb_filtergraphs - 1;
-    fg->graph_desc = graph_desc;
+    fg_create(graph_desc);
 
     return 0;
 }
@@ -1344,6 +1341,22 @@ int opt_timelimit(void *optctx, const char *opt, const char *arg)
     return 0;
 }
 
+#if FFMPEG_OPT_QPHIST
+static int opt_qphist(void *optctx, const char *opt, const char *arg)
+{
+    av_log(NULL, AV_LOG_WARNING, "Option -%s is deprecated and has no effect\n", opt);
+    return 0;
+}
+#endif
+
+#if FFMPEG_OPT_ADRIFT_THRESHOLD
+static int opt_adrift_threshold(void *optctx, const char *opt, const char *arg)
+{
+    av_log(NULL, AV_LOG_WARNING, "Option -%s is deprecated and has no effect\n", opt);
+    return 0;
+}
+#endif
+
 #define OFFSET(x) offsetof(OptionsContext, x)
 const OptionDef options[] = {
     /* main options */
@@ -1443,6 +1456,9 @@ const OptionDef options[] = {
     { "readrate",       HAS_ARG | OPT_FLOAT | OPT_OFFSET |
                         OPT_EXPERT | OPT_INPUT,                      { .off = OFFSET(readrate) },
         "read input at specified rate", "speed" },
+    { "readrate_initial_burst", HAS_ARG | OPT_DOUBLE | OPT_OFFSET |
+                                OPT_EXPERT | OPT_INPUT,              { .off = OFFSET(readrate_initial_burst) },
+        "The initial amount of input to burst read before imposing any readrate", "seconds" },
     { "target",         HAS_ARG | OPT_PERFILE | OPT_OUTPUT,          { .func_arg = opt_target },
         "specify target file type (\"vcd\", \"svcd\", \"dvd\", \"dv\" or \"dv50\" "
         "with optional prefixes \"pal-\", \"ntsc-\" or \"film-\")", "type" },
@@ -1450,8 +1466,10 @@ const OptionDef options[] = {
         "set video sync method globally; deprecated, use -fps_mode", "" },
     { "frame_drop_threshold", HAS_ARG | OPT_FLOAT | OPT_EXPERT,      { &frame_drop_threshold },
         "frame drop threshold", "" },
-    { "adrift_threshold", HAS_ARG | OPT_FLOAT | OPT_EXPERT,          { &audio_drift_threshold },
-        "audio drift threshold", "threshold" },
+#if FFMPEG_OPT_ADRIFT_THRESHOLD
+    { "adrift_threshold", HAS_ARG | OPT_EXPERT,                      { .func_arg = opt_adrift_threshold },
+        "deprecated, does nothing", "threshold" },
+#endif
     { "copyts",         OPT_BOOL | OPT_EXPERT,                       { &copy_ts },
         "copy timestamps" },
     { "start_at_zero",  OPT_BOOL | OPT_EXPERT,                       { &start_at_zero },
@@ -1627,8 +1645,10 @@ const OptionDef options[] = {
     { "vtag",         OPT_VIDEO | HAS_ARG | OPT_EXPERT  | OPT_PERFILE |
                       OPT_INPUT | OPT_OUTPUT,                                    { .func_arg = opt_old2new },
         "force video tag/fourcc", "fourcc/tag" },
-    { "qphist",       OPT_VIDEO | OPT_BOOL | OPT_EXPERT ,                        { &qp_hist },
-        "show QP histogram" },
+#if FFMPEG_OPT_QPHIST
+    { "qphist",       OPT_VIDEO | OPT_EXPERT ,                        { .func_arg = opt_qphist },
+        "deprecated, does nothing" },
+#endif
     { "fps_mode",     OPT_VIDEO | HAS_ARG | OPT_STRING | OPT_EXPERT |
                       OPT_SPEC | OPT_OUTPUT,                                     { .off = OFFSET(fps_mode) },
         "set framerate mode for matching video streams; overrides vsync" },
@@ -1758,7 +1778,7 @@ const OptionDef options[] = {
 
 #if CONFIG_VAAPI
     { "vaapi_device", HAS_ARG | OPT_EXPERT, { .func_arg = opt_vaapi_device },
-        "set VAAPI hardware device (DRM path or X11 display name)", "device" },
+        "set VAAPI hardware device (DirectX adapter index, DRM path or X11 display name)", "device" },
 #endif
 
 #if CONFIG_QSV

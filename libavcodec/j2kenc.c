@@ -127,7 +127,7 @@ typedef struct {
     uint8_t *buf_end;
     int bit_index;
 
-    int64_t lambda;
+    uint64_t lambda;
 
     Jpeg2000CodingStyle codsty;
     Jpeg2000QuantStyle  qntsty;
@@ -1348,7 +1348,7 @@ static void makelayers(Jpeg2000EncoderContext *s, Jpeg2000Tile *tile)
     }
 }
 
-static int getcut(Jpeg2000Cblk *cblk, int64_t lambda, int dwt_norm)
+static int getcut(Jpeg2000Cblk *cblk, uint64_t lambda, int dwt_norm)
 {
     int passno, res = 0;
     for (passno = 0; passno < cblk->npasses; passno++){
@@ -1853,7 +1853,7 @@ const FFCodec ff_jpeg2000_encoder = {
         AV_PIX_FMT_YUV440P,                      AV_PIX_FMT_YUV440P10, AV_PIX_FMT_YUV440P12,
         AV_PIX_FMT_YUV411P,
         AV_PIX_FMT_YUV410P,
-
+        AV_PIX_FMT_YA8,                                           AV_PIX_FMT_YA16,
         AV_PIX_FMT_RGBA,                                          AV_PIX_FMT_RGBA64,
         AV_PIX_FMT_GBRAP, AV_PIX_FMT_GBRAP10, AV_PIX_FMT_GBRAP12, AV_PIX_FMT_GBRAP16,
         AV_PIX_FMT_YUVA420P, AV_PIX_FMT_YUVA420P9, AV_PIX_FMT_YUVA420P10, AV_PIX_FMT_YUVA420P16,
