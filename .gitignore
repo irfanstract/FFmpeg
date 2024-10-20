@@ -42,3 +42,12 @@
 /mapfile
 /tools/python/__pycache__/
 /build
+package.json
+tsconfig.*
+jsconfig.*
+.eslintrc.json
+.vscode/*
+temp-rebase-todo.sh
+libavutil/comer.h
+2023040722.txt
+git-checkout-and-merge-wasmbuildffmpegsh.cmd
