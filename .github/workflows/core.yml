@@ -1,4 +1,5 @@
 name: Build FFmpeg.wasm
+# URGENT TODO: https://github.blog/changelog/2022-10-11-github-actions-deprecating-save-state-and-set-output-commands/ 
 on:
   workflow_dispatch:
     # not restricted to any specific branch
