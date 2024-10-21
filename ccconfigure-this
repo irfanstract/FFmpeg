@@ -1,0 +1,51 @@
+#!/bin/sh
+#
+
+#
+# based on reverting some EMCC-related chgs made in `emconfigure-this`
+#
+
+
+
+
+
+
+
+
+
+# configure FFMpeg 
+# read more at https://github.com/ffmpegwasm/ffmpeg.wasm/blob/7fe8dff16043e86fa129c84acaca271b8a19bec4/build/ffmpeg.sh (note the C ID!)
+CFLAGS="-s USE_PTHREADS"  # a dependency 
+FLAGS=(
+  --target-os=none        # use none to prevent any os specific configurations
+  --enable-cross-compile  # enable cross compile
+  --disable-stripping     # disable stripping
+  --arch=x86_32           # use x86_32 to achieve minimal architectural optimization
+  # --disable-x86asm        # disable x86 asm
+  --disable-asm           # disable asm
+  # --disable-inline-asm    # disable inline asm
+  # --disable-programs            # disable ffmpeg, ffprobe and ffplay build
+  # --disable-doc                 # disable doc build
+  # --disable-debug               # disable debug mode
+  --disable-runtime-cpudetect   # disable cpu detection
+  --disable-autodetect          # disable env auto detect
+
+  # --nm="llvm-nm -g"
+  # --ar=emar
+  # --as=llvm-as
+  # --ranlib=llvm-ranlib
+  # --cc=emcc
+  # --cxx=em++
+  # --objcc=emcc
+  # --dep-cc=emcc
+
+)
+LDFLAGS="$CFLAGS " 
+
+# now direct to the main thing
+./configure "${FLAGS[@]}"
+
+
+
+
+

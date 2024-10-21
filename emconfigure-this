@@ -1,0 +1,49 @@
+#!/bin/sh
+#
+
+#
+# based on
+# https://jeromewu.github.io/build-ffmpeg-webassembly-version-part-2-compile-with-emscripten/ 
+#
+# would running `emconfigure ./configure arg1 arg2 arg3 ...` do all the magic? no.
+# must manually do all these setups.
+#
+
+
+
+
+
+
+
+
+
+# verify Emscripten version
+emcc -v
+
+# configure FFMpeg with Emscripten
+CFLAGS="-s USE_PTHREADS"  # a dependency 
+FLAGS=(
+  --target-os=none        # use none to prevent any os specific configurations
+  --enable-cross-compile  # enable cross compile
+  --disable-stripping     # disable stripping
+  --arch=x86_32           # use x86_32 to achieve minimal architectural optimization
+  --disable-x86asm        # disable x86 asm
+  --disable-inline-asm    # disable inline asm
+  --nm="llvm-nm -g"
+  --ar=emar
+  --as=llvm-as
+  --ranlib=llvm-ranlib
+  --cc=emcc
+  --cxx=em++
+  --objcc=emcc
+  --dep-cc=emcc
+)
+LDFLAGS="$CFLAGS -s INITIAL_MEMORY=33554432" # 33554432 bytes = 32 MB
+
+# now direct to the main thing
+emconfigure ./configure "${FLAGS[@]}"
+
+
+
+
+
