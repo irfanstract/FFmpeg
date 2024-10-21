@@ -349,9 +349,6 @@ static int amf_init_encoder(AVCodecContext *avctx)
         case AV_CODEC_ID_HEVC:
             codec_id = AMFVideoEncoder_HEVC;
             break;
-        case AV_CODEC_ID_AV1 :
-            codec_id = AMFVideoEncoder_AV1;
-            break;
         default:
             break;
     }
@@ -463,11 +460,6 @@ static int amf_copy_buffer(AVCodecContext *avctx, AVPacket *pkt, AMFBuffer *buff
                 pkt->flags = AV_PKT_FLAG_KEY;
             }
             break;
-        case AV_CODEC_ID_AV1:
-            buffer->pVtbl->GetProperty(buffer, AMF_VIDEO_ENCODER_AV1_OUTPUT_FRAME_TYPE, &var);
-            if (var.int64Value == AMF_VIDEO_ENCODER_AV1_OUTPUT_FRAME_TYPE_KEY) {
-                pkt->flags = AV_PKT_FLAG_KEY;
-            }
         default:
             break;
     }
@@ -689,7 +681,6 @@ int ff_amf_receive_packet(AVCodecContext *avctx, AVPacket *avpkt)
         case AV_CODEC_ID_HEVC:
             AMF_ASSIGN_PROPERTY_INT64(res, surface, AMF_VIDEO_ENCODER_HEVC_INSERT_AUD, !!ctx->aud);
             break;
-        //case AV_CODEC_ID_AV1 not supported
         default:
             break;
         }

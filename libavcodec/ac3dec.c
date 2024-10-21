@@ -38,12 +38,12 @@
 #include "libavutil/opt.h"
 #include "libavutil/thread.h"
 #include "bswapdsp.h"
+#include "internal.h"
 #include "aac_ac3_parser.h"
 #include "ac3_parser_internal.h"
 #include "ac3dec.h"
 #include "ac3dec_data.h"
 #include "ac3defs.h"
-#include "decode.h"
 #include "kbdwin.h"
 
 /**
@@ -183,11 +183,41 @@ static av_cold void ac3_tables_init(void)
 #endif
 }
 
-static void ac3_downmix(AVCodecContext *avctx)
+/**
+ * AVCodec initialization
+ */
+static av_cold int ac3_decode_init(AVCodecContext *avctx)
 {
+    static AVOnce init_static_once = AV_ONCE_INIT;
     AC3DecodeContext *s = avctx->priv_data;
     const AVChannelLayout mono   = (AVChannelLayout)AV_CHANNEL_LAYOUT_MONO;
     const AVChannelLayout stereo = (AVChannelLayout)AV_CHANNEL_LAYOUT_STEREO;
+    int i, ret;
+
+    s->avctx = avctx;
+
+    if ((ret = ff_mdct_init(&s->imdct_256, 8, 1, 1.0)) < 0 ||
+        (ret = ff_mdct_init(&s->imdct_512, 9, 1, 1.0)) < 0)
+        return ret;
+    AC3_RENAME(ff_kbd_window_init)(s->window, 5.0, 256);
+    ff_bswapdsp_init(&s->bdsp);
+
+#if (USE_FIXED)
+    s->fdsp = avpriv_alloc_fixed_dsp(avctx->flags & AV_CODEC_FLAG_BITEXACT);
+#else
+    ff_fmt_convert_init(&s->fmt_conv, avctx);
+    s->fdsp = avpriv_float_dsp_alloc(avctx->flags & AV_CODEC_FLAG_BITEXACT);
+#endif
+    if (!s->fdsp)
+        return AVERROR(ENOMEM);
+
+    ff_ac3dsp_init(&s->ac3dsp, avctx->flags & AV_CODEC_FLAG_BITEXACT);
+    av_lfg_init(&s->dith_state, 0);
+
+    if (USE_FIXED)
+        avctx->sample_fmt = AV_SAMPLE_FMT_S16P;
+    else
+        avctx->sample_fmt = AV_SAMPLE_FMT_FLTP;
 
     /* allow downmixing to stereo or mono */
 #if FF_API_OLD_CHANNEL_LAYOUT
@@ -208,47 +238,6 @@ FF_ENABLE_DEPRECATION_WARNINGS
         avctx->ch_layout = (AVChannelLayout)AV_CHANNEL_LAYOUT_STEREO;
     }
     s->downmixed = 1;
-}
-
-/**
- * AVCodec initialization
- */
-static av_cold int ac3_decode_init(AVCodecContext *avctx)
-{
-    static AVOnce init_static_once = AV_ONCE_INIT;
-    AC3DecodeContext *s = avctx->priv_data;
-    const float scale = 1.0f;
-    int i, ret;
-
-    s->avctx = avctx;
-
-    if ((ret = av_tx_init(&s->tx_128, &s->tx_fn_128, IMDCT_TYPE, 1, 128, &scale, 0)))
-        return ret;
-
-    if ((ret = av_tx_init(&s->tx_256, &s->tx_fn_256, IMDCT_TYPE, 1, 256, &scale, 0)))
-        return ret;
-
-    AC3_RENAME(ff_kbd_window_init)(s->window, 5.0, 256);
-    ff_bswapdsp_init(&s->bdsp);
-
-#if (USE_FIXED)
-    s->fdsp = avpriv_alloc_fixed_dsp(avctx->flags & AV_CODEC_FLAG_BITEXACT);
-#else
-    ff_fmt_convert_init(&s->fmt_conv);
-    s->fdsp = avpriv_float_dsp_alloc(avctx->flags & AV_CODEC_FLAG_BITEXACT);
-#endif
-    if (!s->fdsp)
-        return AVERROR(ENOMEM);
-
-    ff_ac3dsp_init(&s->ac3dsp);
-    av_lfg_init(&s->dith_state, 0);
-
-    if (USE_FIXED)
-        avctx->sample_fmt = AV_SAMPLE_FMT_S16P;
-    else
-        avctx->sample_fmt = AV_SAMPLE_FMT_FLTP;
-
-    ac3_downmix(avctx);
 
     for (i = 0; i < AC3_MAX_CHANNELS; i++) {
         s->xcfptr[i] = s->transform_coeffs[i];
@@ -725,10 +714,10 @@ static inline void do_imdct(AC3DecodeContext *s, int channels, int offset)
     for (ch = 1; ch <= channels; ch++) {
         if (s->block_switch[ch]) {
             int i;
-            INTFLOAT *x = s->tmp_output + 128;
+            FFTSample *x = s->tmp_output + 128;
             for (i = 0; i < 128; i++)
                 x[i] = s->transform_coeffs[ch][2 * i];
-            s->tx_fn_128(s->tx_128, s->tmp_output, x, sizeof(INTFLOAT));
+            s->imdct_256.imdct_half(&s->imdct_256, s->tmp_output, x);
 #if USE_FIXED
             s->fdsp->vector_fmul_window_scaled(s->outptr[ch - 1], s->delay[ch - 1 + offset],
                                        s->tmp_output, s->window, 128, 8);
@@ -738,9 +727,9 @@ static inline void do_imdct(AC3DecodeContext *s, int channels, int offset)
 #endif
             for (i = 0; i < 128; i++)
                 x[i] = s->transform_coeffs[ch][2 * i + 1];
-            s->tx_fn_128(s->tx_128, s->delay[ch - 1 + offset], x, sizeof(INTFLOAT));
+            s->imdct_256.imdct_half(&s->imdct_256, s->delay[ch - 1 + offset], x);
         } else {
-            s->tx_fn_256(s->tx_256, s->tmp_output, s->transform_coeffs[ch], sizeof(INTFLOAT));
+            s->imdct_512.imdct_half(&s->imdct_512, s->tmp_output, s->transform_coeffs[ch]);
 #if USE_FIXED
             s->fdsp->vector_fmul_window_scaled(s->outptr[ch - 1], s->delay[ch - 1 + offset],
                                        s->tmp_output, s->window, 128, 8);
@@ -748,7 +737,7 @@ static inline void do_imdct(AC3DecodeContext *s, int channels, int offset)
             s->fdsp->vector_fmul_window(s->outptr[ch - 1], s->delay[ch - 1 + offset],
                                        s->tmp_output, s->window, 128);
 #endif
-            memcpy(s->delay[ch - 1 + offset], s->tmp_output + 128, 128 * sizeof(INTFLOAT));
+            memcpy(s->delay[ch - 1 + offset], s->tmp_output + 128, 128 * sizeof(FFTSample));
         }
     }
 }
@@ -1512,8 +1501,19 @@ static int ac3_decode_frame(AVCodecContext *avctx, AVFrame *frame,
     s->superframe_size = 0;
 
     buf_size = full_buf_size;
-    i = ff_ac3_find_syncword(buf, buf_size);
-    if (i < 0 || i > 10)
+    for (i = 1; i < buf_size; i += 2) {
+        if (buf[i] == 0x77 || buf[i] == 0x0B) {
+            if ((buf[i] ^ buf[i-1]) == (0x77 ^ 0x0B)) {
+                i--;
+                break;
+            } else if ((buf[i] ^ buf[i+1]) == (0x77 ^ 0x0B)) {
+                break;
+            }
+        }
+    }
+    if (i >= buf_size)
+        return AVERROR_INVALIDDATA;
+    if (i > 10)
         return i;
     buf += i;
     buf_size -= i;
@@ -1714,12 +1714,6 @@ skip:
     if (!err) {
         avctx->sample_rate = s->sample_rate;
         avctx->bit_rate    = s->bit_rate + s->prev_bit_rate;
-        avctx->profile     = s->eac3_extension_type_a == 1 ? FF_PROFILE_EAC3_DDP_ATMOS : FF_PROFILE_UNKNOWN;
-    }
-
-    if (!avctx->sample_rate) {
-        av_log(avctx, AV_LOG_ERROR, "Could not determine the sample rate\n");
-        return AVERROR_INVALIDDATA;
     }
 
     for (ch = 0; ch < EAC3_MAX_CHANNELS; ch++)
@@ -1757,7 +1751,7 @@ skip:
                     if (index < 0)
                         return AVERROR_INVALIDDATA;
                     if (extend >= channel_map_size)
-                        break;
+                        return AVERROR_INVALIDDATA;
 
                     extended_channel_map[index] = offset + channel_map[extend++];
                 } else {
@@ -1769,7 +1763,7 @@ skip:
                             if (index < 0)
                                 return AVERROR_INVALIDDATA;
                             if (extend >= channel_map_size)
-                                break;
+                                return AVERROR_INVALIDDATA;
 
                             extended_channel_map[index] = offset + channel_map[extend++];
                         }
@@ -1777,8 +1771,6 @@ skip:
                 }
             }
         }
-
-        ac3_downmix(avctx);
     }
 
     /* get output buffer */
@@ -1864,8 +1856,8 @@ skip:
 static av_cold int ac3_decode_end(AVCodecContext *avctx)
 {
     AC3DecodeContext *s = avctx->priv_data;
-    av_tx_uninit(&s->tx_256);
-    av_tx_uninit(&s->tx_128);
+    ff_mdct_end(&s->imdct_512);
+    ff_mdct_end(&s->imdct_256);
     av_freep(&s->fdsp);
     av_freep(&s->downmix_coeffs[0]);
 

@@ -37,7 +37,7 @@
 #include "avcodec.h"
 #include "bytestream.h"
 #include "codec_internal.h"
-#include "decode.h"
+#include "internal.h"
 #include "thread.h"
 #include "jpeg2000.h"
 #include "jpeg2000dsp.h"
@@ -323,6 +323,16 @@ static int get_siz(Jpeg2000DecoderContext *s)
         return AVERROR_INVALIDDATA;
     }
 
+    if (s->image_offset_x >= s->width || s->image_offset_y >= s->height) {
+        av_log(s->avctx, AV_LOG_ERROR, "image offsets outside image");
+        return AVERROR_INVALIDDATA;
+    }
+
+    if (s->reduction_factor && (s->image_offset_x || s->image_offset_y) ){
+        av_log(s->avctx, AV_LOG_ERROR, "reduction factor with image offsets is not fully implemented");
+        return AVERROR_PATCHWELCOME;
+    }
+
     s->ncomponents = ncomponents;
 
     if (s->tile_width <= 0 || s->tile_height <= 0) {
@@ -388,7 +398,7 @@ static int get_siz(Jpeg2000DecoderContext *s)
         dimy = FFMAX(dimy, ff_jpeg2000_ceildiv(o_dimy, s->cdy[i]));
     }
 
-    ret = ff_set_dimensions(s->avctx, dimx, dimy);
+    ret = ff_set_dimensions(s->avctx, dimx << s->avctx->lowres, dimy << s->avctx->lowres);
     if (ret < 0)
         return ret;
 
@@ -521,10 +531,6 @@ static int get_cox(Jpeg2000DecoderContext *s, Jpeg2000CodingStyle *c)
 
     c->cblk_style = bytestream2_get_byteu(&s->g);
     if (c->cblk_style != 0) { // cblk style
-        if (c->cblk_style & JPEG2000_CTSY_HTJ2K_M || c->cblk_style & JPEG2000_CTSY_HTJ2K_F) {
-            av_log(s->avctx, AV_LOG_ERROR, "Support for High throughput JPEG 2000 is not yet available\n");
-            return AVERROR_PATCHWELCOME;
-        }
         av_log(s->avctx, AV_LOG_WARNING, "extra cblk styles %X\n", c->cblk_style);
         if (c->cblk_style & JPEG2000_CBLK_BYPASS)
             av_log(s->avctx, AV_LOG_WARNING, "Selective arithmetic coding bypass\n");
@@ -1683,7 +1689,7 @@ static void decode_refpass(Jpeg2000T1Context *t1, int width, int height,
                 }
 }
 
-static void decode_clnpass(const Jpeg2000DecoderContext *s, Jpeg2000T1Context *t1,
+static void decode_clnpass(Jpeg2000DecoderContext *s, Jpeg2000T1Context *t1,
                            int width, int height, int bpno, int bandno,
                            int seg_symbols, int vert_causal_ctx_csty_symbol)
 {
@@ -1749,7 +1755,7 @@ static void decode_clnpass(const Jpeg2000DecoderContext *s, Jpeg2000T1Context *t
     }
 }
 
-static int decode_cblk(const Jpeg2000DecoderContext *s, Jpeg2000CodingStyle *codsty,
+static int decode_cblk(Jpeg2000DecoderContext *s, Jpeg2000CodingStyle *codsty,
                        Jpeg2000T1Context *t1, Jpeg2000Cblk *cblk,
                        int width, int height, int bandpos, uint8_t roi_shift)
 {
@@ -1900,7 +1906,7 @@ static void dequantization_int_97(int x, int y, Jpeg2000Cblk *cblk,
     }
 }
 
-static inline void mct_decode(const Jpeg2000DecoderContext *s, Jpeg2000Tile *tile)
+static inline void mct_decode(Jpeg2000DecoderContext *s, Jpeg2000Tile *tile)
 {
     int i, csize = 1;
     void *src[3];
@@ -1941,7 +1947,7 @@ static inline void roi_scale_cblk(Jpeg2000Cblk *cblk,
     }
 }
 
-static inline void tile_codeblocks(const Jpeg2000DecoderContext *s, Jpeg2000Tile *tile)
+static inline void tile_codeblocks(Jpeg2000DecoderContext *s, Jpeg2000Tile *tile)
 {
     Jpeg2000T1Context t1;
 
@@ -2013,7 +2019,7 @@ static inline void tile_codeblocks(const Jpeg2000DecoderContext *s, Jpeg2000Tile
 }
 
 #define WRITE_FRAME(D, PIXEL)                                                                     \
-    static inline void write_frame_ ## D(const Jpeg2000DecoderContext * s, Jpeg2000Tile * tile,   \
+    static inline void write_frame_ ## D(Jpeg2000DecoderContext * s, Jpeg2000Tile * tile,         \
                                          AVFrame * picture, int precision)                        \
     {                                                                                             \
         const AVPixFmtDescriptor *pixdesc = av_pix_fmt_desc_get(s->avctx->pix_fmt);               \
@@ -2082,7 +2088,7 @@ WRITE_FRAME(16, uint16_t)
 static int jpeg2000_decode_tile(AVCodecContext *avctx, void *td,
                                 int jobnr, int threadnr)
 {
-    const Jpeg2000DecoderContext *s = avctx->priv_data;
+    Jpeg2000DecoderContext *s = avctx->priv_data;
     AVFrame *picture = td;
     Jpeg2000Tile *tile = s->tile + jobnr;
 
@@ -2471,6 +2477,14 @@ static av_cold int jpeg2000_decode_init(AVCodecContext *avctx)
 {
     Jpeg2000DecoderContext *s = avctx->priv_data;
 
+    if (avctx->lowres)
+        av_log(avctx, AV_LOG_WARNING, "lowres is overriden by reduction_factor but set anyway\n");
+    if (!s->reduction_factor && avctx->lowres < JPEG2000_MAX_RESLEVELS) {
+        s->reduction_factor = avctx->lowres;
+    }
+    if (avctx->lowres != s->reduction_factor && avctx->lowres)
+        return AVERROR(EINVAL);
+
     ff_jpeg2000dsp_init(&s->dsp);
     ff_jpeg2000_init_tier1_luts();
 
@@ -2519,15 +2533,6 @@ static int jpeg2000_decode_frame(AVCodecContext *avctx, AVFrame *picture,
     if (ret = jpeg2000_read_main_headers(s))
         goto end;
 
-    if (s->sar.num && s->sar.den)
-        avctx->sample_aspect_ratio = s->sar;
-    s->sar.num = s->sar.den = 0;
-
-    if (avctx->skip_frame >= AVDISCARD_ALL) {
-        jpeg2000_dec_cleanup(s);
-        return avpkt->size;
-    }
-
     /* get picture buffer */
     if ((ret = ff_thread_get_buffer(avctx, picture, 0)) < 0)
         goto end;
@@ -2556,6 +2561,9 @@ static int jpeg2000_decode_frame(AVCodecContext *avctx, AVFrame *picture,
 
     if (s->avctx->pix_fmt == AV_PIX_FMT_PAL8)
         memcpy(picture->data[1], s->palette, 256 * sizeof(uint32_t));
+    if (s->sar.num && s->sar.den)
+        avctx->sample_aspect_ratio = s->sar;
+    s->sar.num = s->sar.den = 0;
 
     return bytestream2_tell(&s->g);
 
@@ -2582,7 +2590,7 @@ static const AVClass jpeg2000_class = {
 
 const FFCodec ff_jpeg2000_decoder = {
     .p.name           = "jpeg2000",
-    CODEC_LONG_NAME("JPEG 2000"),
+    .p.long_name      = NULL_IF_CONFIG_SMALL("JPEG 2000"),
     .p.type           = AVMEDIA_TYPE_VIDEO,
     .p.id             = AV_CODEC_ID_JPEG2000,
     .p.capabilities   = AV_CODEC_CAP_SLICE_THREADS | AV_CODEC_CAP_FRAME_THREADS | AV_CODEC_CAP_DR1,
@@ -2592,5 +2600,5 @@ const FFCodec ff_jpeg2000_decoder = {
     .p.priv_class     = &jpeg2000_class,
     .p.max_lowres     = 5,
     .p.profiles       = NULL_IF_CONFIG_SMALL(ff_jpeg2000_profiles),
-    .caps_internal    = FF_CODEC_CAP_SKIP_FRAME_FILL_PARAM,
+    .caps_internal    = FF_CODEC_CAP_INIT_THREADSAFE,
 };

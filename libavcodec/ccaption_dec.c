@@ -922,7 +922,7 @@ static int decode(AVCodecContext *avctx, AVSubtitle *sub,
     }
 
     *got_sub = sub->num_rects > 0;
-    return avpkt->size;
+    return ret;
 }
 
 #define OFFSET(x) offsetof(CCaptionSubContext, x)
@@ -946,7 +946,7 @@ static const AVClass ccaption_dec_class = {
 
 const FFCodec ff_ccaption_decoder = {
     .p.name         = "cc_dec",
-    CODEC_LONG_NAME("Closed Caption (EIA-608 / CEA-708)"),
+    .p.long_name    = NULL_IF_CONFIG_SMALL("Closed Caption (EIA-608 / CEA-708)"),
     .p.type         = AVMEDIA_TYPE_SUBTITLE,
     .p.id           = AV_CODEC_ID_EIA_608,
     .p.priv_class   = &ccaption_dec_class,
@@ -956,4 +956,5 @@ const FFCodec ff_ccaption_decoder = {
     .close          = close_decoder,
     .flush          = flush_decoder,
     FF_CODEC_DECODE_SUB_CB(decode),
+    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE,
 };

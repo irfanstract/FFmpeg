@@ -31,6 +31,7 @@
 #include "sbr.h"
 #include "aacsbr.h"
 #include "aacsbrdata.h"
+#include "fft.h"
 #include "internal.h"
 #include "aacps.h"
 #include "sbrdsp.h"

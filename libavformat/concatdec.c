@@ -25,7 +25,6 @@
 #include "libavutil/opt.h"
 #include "libavutil/parseutils.h"
 #include "libavutil/timestamp.h"
-#include "libavcodec/codec_desc.h"
 #include "libavcodec/bsf.h"
 #include "avformat.h"
 #include "avio_internal.h"
@@ -181,9 +180,8 @@ static int copy_stream_props(AVStream *st, AVStream *source_st)
             if (ret < 0)
                 return ret;
         }
-        if (source_st->codecpar->extradata_size)
-            memcpy(st->codecpar->extradata, source_st->codecpar->extradata,
-                   source_st->codecpar->extradata_size);
+        memcpy(st->codecpar->extradata, source_st->codecpar->extradata,
+               source_st->codecpar->extradata_size);
         return 0;
     }
     if ((ret = avcodec_parameters_copy(st->codecpar, source_st->codecpar)) < 0)
@@ -667,7 +665,9 @@ static int concat_read_header(AVFormatContext *avf)
         else
             time = cat->files[i].start_time;
         if (cat->files[i].user_duration == AV_NOPTS_VALUE) {
-            if (cat->files[i].inpoint == AV_NOPTS_VALUE || cat->files[i].outpoint == AV_NOPTS_VALUE)
+            if (cat->files[i].inpoint == AV_NOPTS_VALUE || cat->files[i].outpoint == AV_NOPTS_VALUE ||
+                cat->files[i].outpoint - (uint64_t)cat->files[i].inpoint != av_sat_sub64(cat->files[i].outpoint, cat->files[i].inpoint)
+            )
                 break;
             cat->files[i].user_duration = cat->files[i].outpoint - cat->files[i].inpoint;
         }

@@ -60,6 +60,7 @@
 #include "sbr.h"
 #include "aacsbr.h"
 #include "aacsbrdata.h"
+#include "fft.h"
 #include "aacps.h"
 #include "sbrdsp.h"
 #include "libavutil/internal.h"

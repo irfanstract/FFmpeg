@@ -44,12 +44,14 @@
  * decoding algorithm and it worked fine on much lower spec machines.
  */
 
-#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "avcodec.h"
 #include "codec_internal.h"
 #include "decode.h"
+#include "internal.h"
 #include "libavutil/internal.h"
 
 #define HUFFMAN_TABLE_SIZE 64 * 1024
@@ -241,7 +243,7 @@ static const FFCodecDefault idcin_defaults[] = {
 
 const FFCodec ff_idcin_decoder = {
     .p.name         = "idcinvideo",
-    CODEC_LONG_NAME("id Quake II CIN video"),
+    .p.long_name    = NULL_IF_CONFIG_SMALL("id Quake II CIN video"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_IDCIN,
     .priv_data_size = sizeof(IdcinContext),
@@ -249,4 +251,5 @@ const FFCodec ff_idcin_decoder = {
     FF_CODEC_DECODE_CB(idcin_decode_frame),
     .p.capabilities = AV_CODEC_CAP_DR1,
     .defaults       = idcin_defaults,
+    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE,
 };

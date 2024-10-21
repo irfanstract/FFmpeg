@@ -29,17 +29,19 @@
 #include <zlib.h>
 
 #include "libavutil/imgutils.h"
+#include "libavutil/intreadwrite.h"
 #include "libavutil/mem_internal.h"
 
 #include "avcodec.h"
 #include "blockdsp.h"
 #include "bytestream.h"
 #include "codec_internal.h"
-#include "decode.h"
 #include "elsdec.h"
 #include "get_bits.h"
 #include "idctdsp.h"
+#include "internal.h"
 #include "jpegtables.h"
+#include "mjpeg.h"
 #include "mjpegdec.h"
 
 #define EPIC_PIX_STACK_SIZE 1024
@@ -59,23 +61,22 @@ enum Compression {
     COMPR_KEMPF_J_B,
 };
 
-/* These tables are already permuted according to ff_zigzag_direct */
 static const uint8_t luma_quant[64] = {
-     8,  6,  6,  7,  6,  5,  8,  7,
-     7,  7,  9,  9,  8, 10, 12, 20,
-    13, 12, 11, 11, 12, 25, 18, 19,
-    15, 20, 29, 26, 31, 30, 29, 26,
-    28, 28, 32, 36, 46, 39, 32, 34,
-    44, 35, 28, 28, 40, 55, 41, 44,
-    48, 49, 52, 52, 52, 31, 39, 57,
-    61, 56, 50, 60, 46, 51, 52, 50,
+     8,  6,  5,  8, 12, 20, 26, 31,
+     6,  6,  7, 10, 13, 29, 30, 28,
+     7,  7,  8, 12, 20, 29, 35, 28,
+     7,  9, 11, 15, 26, 44, 40, 31,
+     9, 11, 19, 28, 34, 55, 52, 39,
+    12, 18, 28, 32, 41, 52, 57, 46,
+    25, 32, 39, 44, 52, 61, 60, 51,
+    36, 46, 48, 49, 56, 50, 52, 50
 };
 
 static const uint8_t chroma_quant[64] = {
-     9,  9,  9, 12, 11, 12, 24, 13,
-    13, 24, 50, 33, 28, 33, 50, 50,
-    50, 50, 50, 50, 50, 50, 50, 50,
-    50, 50, 50, 50, 50, 50, 50, 50,
+     9,  9, 12, 24, 50, 50, 50, 50,
+     9, 11, 13, 33, 50, 50, 50, 50,
+    12, 13, 28, 50, 50, 50, 50, 50,
+    24, 33, 50, 50, 50, 50, 50, 50,
     50, 50, 50, 50, 50, 50, 50, 50,
     50, 50, 50, 50, 50, 50, 50, 50,
     50, 50, 50, 50, 50, 50, 50, 50,
@@ -121,7 +122,7 @@ typedef struct ePICContext {
 typedef struct JPGContext {
     BlockDSPContext bdsp;
     IDCTDSPContext idsp;
-    uint8_t    permutated_scantable[64];
+    ScanTable  scantable;
 
     VLC        dc_vlc[2], ac_vlc[2];
     int        prev_dc[3];
@@ -145,7 +146,8 @@ typedef struct G2MContext {
     int        got_header;
 
     uint8_t    *framebuf;
-    int        framebuf_stride, old_width, old_height;
+    int        framebuf_stride;
+    unsigned int framebuf_allocated;
 
     uint8_t    *synth_tile, *jpeg_tile, *epic_buf, *epic_buf_base;
     int        tile_stride, epic_buf_stride, old_tile_w, old_tile_h;
@@ -181,10 +183,10 @@ static av_cold int jpg_init(AVCodecContext *avctx, JPGContext *c)
     if (ret)
         return ret;
 
-    ff_blockdsp_init(&c->bdsp);
+    ff_blockdsp_init(&c->bdsp, avctx);
     ff_idctdsp_init(&c->idsp, avctx);
-    ff_permute_scantable(c->permutated_scantable, ff_zigzag_direct,
-                         c->idsp.idct_permutation);
+    ff_init_scantable(c->idsp.idct_permutation, &c->scantable,
+                      ff_zigzag_direct);
 
     return 0;
 }
@@ -251,8 +253,8 @@ static int jpg_decode_block(JPGContext *c, GetBitContext *gb,
             int nbits = val;
 
             val                                 = get_xbits(gb, nbits);
-            val                                *= qmat[pos];
-            block[c->permutated_scantable[pos]] = val;
+            val                                *= qmat[ff_zigzag_direct[pos]];
+            block[c->scantable.permutated[pos]] = val;
         }
     }
     return 0;
@@ -931,8 +933,8 @@ static int epic_jb_decode_tile(G2MContext *c, int tile_x, int tile_y,
 
         if (ret) {
             av_log(avctx, AV_LOG_ERROR,
-                   "ePIC: tile decoding failed, frame=%"PRId64", tile_x=%d, tile_y=%d\n",
-                   avctx->frame_num, tile_x, tile_y);
+                   "ePIC: tile decoding failed, frame=%d, tile_x=%d, tile_y=%d\n",
+                   avctx->frame_number, tile_x, tile_y);
             return AVERROR_INVALIDDATA;
         }
 
@@ -1160,14 +1162,13 @@ static int g2m_init_buffers(G2MContext *c)
 {
     int aligned_height;
 
-    if (!c->framebuf || c->old_width < c->width || c->old_height < c->height) {
-        c->framebuf_stride = FFALIGN(c->width + 15, 16) * 3;
-        aligned_height     = c->height + 15;
-        av_free(c->framebuf);
-        c->framebuf = av_calloc(c->framebuf_stride, aligned_height);
-        if (!c->framebuf)
-            return AVERROR(ENOMEM);
-    }
+    c->framebuf_stride = FFALIGN(c->width + 15, 16) * 3;
+    aligned_height = c->height + 15;
+
+    av_fast_mallocz(&c->framebuf, &c->framebuf_allocated, c->framebuf_stride * aligned_height);
+    if (!c->framebuf)
+        return AVERROR(ENOMEM);
+
     if (!c->synth_tile || !c->jpeg_tile ||
         (c->compression == 2 && !c->epic_buf_base) ||
         c->old_tile_w < c->tile_width ||
@@ -1617,13 +1618,14 @@ static av_cold int g2m_decode_end(AVCodecContext *avctx)
     av_freep(&c->jpeg_tile);
     av_freep(&c->cursor);
     av_freep(&c->framebuf);
+    c->framebuf_allocated = 0;
 
     return 0;
 }
 
 const FFCodec ff_g2m_decoder = {
     .p.name         = "g2m",
-    CODEC_LONG_NAME("Go2Meeting"),
+    .p.long_name    = NULL_IF_CONFIG_SMALL("Go2Meeting"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_G2M,
     .priv_data_size = sizeof(G2MContext),
@@ -1631,5 +1633,5 @@ const FFCodec ff_g2m_decoder = {
     .close          = g2m_decode_end,
     FF_CODEC_DECODE_CB(g2m_decode_frame),
     .p.capabilities = AV_CODEC_CAP_DR1,
-    .caps_internal  = FF_CODEC_CAP_INIT_CLEANUP,
+    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
 };

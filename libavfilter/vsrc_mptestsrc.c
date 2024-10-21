@@ -308,7 +308,6 @@ static int request_frame(AVFilterLink *outlink)
     if (!picref)
         return AVERROR(ENOMEM);
     picref->pts = test->pts++;
-    picref->duration = 1;
 
     // clean image
     for (i = 0; i < h; i++)

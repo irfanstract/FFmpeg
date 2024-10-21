@@ -23,6 +23,7 @@
 #include "bytestream.h"
 #include "codec_internal.h"
 #include "decode.h"
+#include "internal.h"
 
 typedef struct SimbiosisIMXContext {
     AVFrame *frame;
@@ -181,7 +182,7 @@ static int imx_decode_close(AVCodecContext *avctx)
 
 const FFCodec ff_simbiosis_imx_decoder = {
     .p.name         = "simbiosis_imx",
-    CODEC_LONG_NAME("Simbiosis Interactive IMX Video"),
+    .p.long_name    = NULL_IF_CONFIG_SMALL("Simbiosis Interactive IMX Video"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_SIMBIOSIS_IMX,
     .priv_data_size = sizeof(SimbiosisIMXContext),
@@ -190,5 +191,6 @@ const FFCodec ff_simbiosis_imx_decoder = {
     .close          = imx_decode_close,
     .flush          = imx_decode_flush,
     .p.capabilities = AV_CODEC_CAP_DR1,
-    .caps_internal  = FF_CODEC_CAP_INIT_CLEANUP,
+    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE |
+                      FF_CODEC_CAP_INIT_CLEANUP,
 };

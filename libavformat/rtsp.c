@@ -32,7 +32,6 @@
 #include "libavutil/dict.h"
 #include "libavutil/opt.h"
 #include "libavutil/time.h"
-#include "libavcodec/codec_desc.h"
 #include "avformat.h"
 #include "avio_internal.h"
 
@@ -410,7 +409,7 @@ static void parse_fmtp(AVFormatContext *s, RTSPState *rt,
         if (rtsp_st->sdp_payload_type == payload_type &&
             rtsp_st->dynamic_handler &&
             rtsp_st->dynamic_handler->parse_sdp_a_line) {
-            rtsp_st->dynamic_handler->parse_sdp_a_line(s, i,
+            rtsp_st->dynamic_handler->parse_sdp_a_line(s, rtsp_st->stream_index,
                 rtsp_st->dynamic_protocol_context, line);
         }
     }

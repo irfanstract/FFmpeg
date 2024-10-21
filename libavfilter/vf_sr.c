@@ -159,9 +159,8 @@ static int filter_frame(AVFilterLink *inlink, AVFrame *in)
         sws_scale(ctx->sws_uv_scale, (const uint8_t **)(in->data + 2), in->linesize + 2,
                   0, ctx->sws_uv_height, out->data + 2, out->linesize + 2);
     }
-    if (in != out) {
-        av_frame_free(&in);
-    }
+
+    av_frame_free(&in);
     return ff_filter_frame(outlink, out);
 }
 

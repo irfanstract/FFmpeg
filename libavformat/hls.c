@@ -225,7 +225,6 @@ typedef struct HLSContext {
     int http_persistent;
     int http_multiple;
     int http_seekable;
-    int seg_max_retry;
     AVIOContext *playlist_pb;
     HLSCryptoContext  crypto_ctx;
 } HLSContext;
@@ -1105,10 +1104,10 @@ static void parse_id3(AVFormatContext *s, AVIOContext *pb,
 static int id3_has_changed_values(struct playlist *pls, AVDictionary *metadata,
                                   ID3v2ExtraMetaAPIC *apic)
 {
-    const AVDictionaryEntry *entry = NULL;
-    const AVDictionaryEntry *oldentry;
+    AVDictionaryEntry *entry = NULL;
+    AVDictionaryEntry *oldentry;
     /* check that no keys have changed values */
-    while ((entry = av_dict_iterate(metadata, entry))) {
+    while ((entry = av_dict_get(metadata, "", entry, AV_DICT_IGNORE_SUFFIX))) {
         oldentry = av_dict_get(pls->id3_initial, entry->key, NULL, AV_DICT_MATCH_CASE);
         if (!oldentry || strcmp(oldentry->value, entry->value) != 0)
             return 1;
@@ -1473,7 +1472,6 @@ static int read_data(void *opaque, uint8_t *buf, int buf_size)
     int ret;
     int just_opened = 0;
     int reload_count = 0;
-    int segment_retries = 0;
     struct segment *seg;
 
 restart:
@@ -1529,7 +1527,7 @@ reload:
                 return AVERROR_EOF;
             }
         } else {
-            av_log(v->parent, AV_LOG_WARNING, "The m3u8 list sequence may have been wrapped.\n");
+            av_log(v->parent, AV_LOG_WARNING, "maybe the m3u8 list sequence have been wraped.\n");
         }
         if (v->cur_seq_no >= v->start_seq_no + v->n_segments) {
             if (v->finished)
@@ -1565,18 +1563,9 @@ reload:
             av_log(v->parent, AV_LOG_WARNING, "Failed to open segment %"PRId64" of playlist %d\n",
                    v->cur_seq_no,
                    v->index);
-            if (segment_retries >= c->seg_max_retry) {
-                av_log(v->parent, AV_LOG_WARNING, "Segment %"PRId64" of playlist %d failed too many times, skipping\n",
-                       v->cur_seq_no,
-                       v->index);
-                v->cur_seq_no++;
-                segment_retries = 0;
-            } else {
-                segment_retries++;
-            }
+            v->cur_seq_no += 1;
             goto reload;
         }
-        segment_retries = 0;
         just_opened = 1;
     }
 
@@ -2549,7 +2538,7 @@ static const AVOption hls_options[] = {
         {.str = "3gp,aac,avi,ac3,eac3,flac,mkv,m3u8,m4a,m4s,m4v,mpg,mov,mp2,mp3,mp4,mpeg,mpegts,ogg,ogv,oga,ts,vob,wav"},
         INT_MIN, INT_MAX, FLAGS},
     {"max_reload", "Maximum number of times a insufficient list is attempted to be reloaded",
-        OFFSET(max_reload), AV_OPT_TYPE_INT, {.i64 = 1000}, 0, INT_MAX, FLAGS},
+        OFFSET(max_reload), AV_OPT_TYPE_INT, {.i64 = 3}, 0, INT_MAX, FLAGS},
     {"m3u8_hold_counters", "The maximum number of times to load m3u8 when it refreshes without new segments",
         OFFSET(m3u8_hold_counters), AV_OPT_TYPE_INT, {.i64 = 1000}, 0, INT_MAX, FLAGS},
     {"http_persistent", "Use persistent HTTP connections",
@@ -2560,8 +2549,6 @@ static const AVOption hls_options[] = {
         OFFSET(http_seekable), AV_OPT_TYPE_BOOL, { .i64 = -1}, -1, 1, FLAGS},
     {"seg_format_options", "Set options for segment demuxer",
         OFFSET(seg_format_opts), AV_OPT_TYPE_DICT, {.str = NULL}, 0, 0, FLAGS},
-    {"seg_max_retry", "Maximum number of times to reload a segment on error.",
-     OFFSET(seg_max_retry), AV_OPT_TYPE_INT, {.i64 = 0}, 0, INT_MAX, FLAGS},
     {NULL}
 };
 

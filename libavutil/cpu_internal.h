@@ -48,7 +48,6 @@ int ff_get_cpu_flags_mips(void);
 int ff_get_cpu_flags_aarch64(void);
 int ff_get_cpu_flags_arm(void);
 int ff_get_cpu_flags_ppc(void);
-int ff_get_cpu_flags_riscv(void);
 int ff_get_cpu_flags_x86(void);
 int ff_get_cpu_flags_loongarch(void);
 

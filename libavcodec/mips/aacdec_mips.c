@@ -126,9 +126,9 @@ static void imdct_and_windowing_mips(AACContext *ac, SingleChannelElement *sce)
 
     if (ics->window_sequence[0] == EIGHT_SHORT_SEQUENCE) {
         for (i = 0; i < 1024; i += 128)
-            ac->mdct128_fn(ac->mdct128, buf + i, in + i, sizeof(float));
+            ac->mdct_small.imdct_half(&ac->mdct_small, buf + i, in + i);
     } else
-        ac->mdct1024_fn(ac->mdct1024, buf, in, sizeof(float));
+        ac->mdct.imdct_half(&ac->mdct, buf, in);
 
     /* window overlapping
      * NOTE: To simplify the overlapping code, all 'meaningless' short to long

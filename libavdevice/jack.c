@@ -29,6 +29,7 @@
 #include "libavutil/fifo.h"
 #include "libavutil/opt.h"
 #include "libavutil/time.h"
+#include "libavcodec/avcodec.h"
 #include "libavformat/avformat.h"
 #include "libavformat/internal.h"
 #include "timefilter.h"

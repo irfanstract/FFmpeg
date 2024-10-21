@@ -42,7 +42,6 @@
 
 #ifdef _WIN32
 #  include <fcntl.h>
-#  include <stdint.h>
 #  ifdef lseek
 #   undef lseek
 #  endif

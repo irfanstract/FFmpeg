@@ -22,7 +22,6 @@
 #include "libavutil/imgutils.h"
 #include "libavutil/intreadwrite.h"
 #include "avfilter.h"
-#include "filters.h"
 #include "formats.h"
 #include "internal.h"
 #include "video.h"
@@ -316,10 +315,8 @@ static int filter_frame(AVFilterLink *link, AVFrame *frame)
             s->front++;
         }
 
-        if (ret = ff_inlink_make_frame_writable(link, &frame)) {
-            av_frame_free(&frame);
+        if (ret = av_frame_make_writable(frame))
             return ret;
-        }
 
         while (s->front > s->back) {
             int x, y;

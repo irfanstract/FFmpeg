@@ -878,7 +878,7 @@ static int cbs_av1_read_unit(CodedBitstreamContext *ctx,
     GetBitContext gbc;
     int err, start_pos, end_pos;
 
-    err = ff_cbs_alloc_unit_content(ctx, unit);
+    err = ff_cbs_alloc_unit_content2(ctx, unit);
     if (err < 0)
         return err;
     obu = unit->content;
@@ -1058,31 +1058,15 @@ static int cbs_av1_write_obu(CodedBitstreamContext *ctx,
     AV1RawTileData *td;
     size_t header_size;
     int err, start_pos, end_pos, data_pos;
-    CodedBitstreamAV1Context av1ctx;
 
     // OBUs in the normal bitstream format must contain a size field
     // in every OBU (in annex B it is optional, but we don't support
     // writing that).
     obu->header.obu_has_size_field = 1;
-    av1ctx = *priv;
-
-    if (priv->sequence_header_ref) {
-        av1ctx.sequence_header_ref = av_buffer_ref(priv->sequence_header_ref);
-        if (!av1ctx.sequence_header_ref)
-            return AVERROR(ENOMEM);
-    }
-
-    if (priv->frame_header_ref) {
-        av1ctx.frame_header_ref = av_buffer_ref(priv->frame_header_ref);
-        if (!av1ctx.frame_header_ref) {
-            err = AVERROR(ENOMEM);
-            goto error;
-        }
-    }
 
     err = cbs_av1_write_obu_header(ctx, pbc, &obu->header);
     if (err < 0)
-        goto error;
+        return err;
 
     if (obu->header.obu_has_size_field) {
         pbc_tmp = *pbc;
@@ -1100,21 +1084,18 @@ static int cbs_av1_write_obu(CodedBitstreamContext *ctx,
             err = cbs_av1_write_sequence_header_obu(ctx, pbc,
                                                     &obu->obu.sequence_header);
             if (err < 0)
-                goto error;
+                return err;
 
             av_buffer_unref(&priv->sequence_header_ref);
             priv->sequence_header = NULL;
 
             err = ff_cbs_make_unit_refcounted(ctx, unit);
             if (err < 0)
-                goto error;
+                return err;
 
             priv->sequence_header_ref = av_buffer_ref(unit->content_ref);
-            if (!priv->sequence_header_ref) {
-                err = AVERROR(ENOMEM);
-                goto error;
-            }
-
+            if (!priv->sequence_header_ref)
+                return AVERROR(ENOMEM);
             priv->sequence_header = &obu->obu.sequence_header;
         }
         break;
@@ -1122,7 +1103,7 @@ static int cbs_av1_write_obu(CodedBitstreamContext *ctx,
         {
             err = cbs_av1_write_temporal_delimiter_obu(ctx, pbc);
             if (err < 0)
-                goto error;
+                return err;
         }
         break;
     case AV1_OBU_FRAME_HEADER:
@@ -1134,7 +1115,7 @@ static int cbs_av1_write_obu(CodedBitstreamContext *ctx,
                                                  AV1_OBU_REDUNDANT_FRAME_HEADER,
                                                  NULL);
             if (err < 0)
-                goto error;
+                return err;
         }
         break;
     case AV1_OBU_TILE_GROUP:
@@ -1142,7 +1123,7 @@ static int cbs_av1_write_obu(CodedBitstreamContext *ctx,
             err = cbs_av1_write_tile_group_obu(ctx, pbc,
                                                &obu->obu.tile_group);
             if (err < 0)
-                goto error;
+                return err;
 
             td = &obu->obu.tile_group.tile_data;
         }
@@ -1151,7 +1132,7 @@ static int cbs_av1_write_obu(CodedBitstreamContext *ctx,
         {
             err = cbs_av1_write_frame_obu(ctx, pbc, &obu->obu.frame, NULL);
             if (err < 0)
-                goto error;
+                return err;
 
             td = &obu->obu.frame.tile_group.tile_data;
         }
@@ -1160,7 +1141,7 @@ static int cbs_av1_write_obu(CodedBitstreamContext *ctx,
         {
             err = cbs_av1_write_tile_list_obu(ctx, pbc, &obu->obu.tile_list);
             if (err < 0)
-                goto error;
+                return err;
 
             td = &obu->obu.tile_list.tile_data;
         }
@@ -1169,19 +1150,18 @@ static int cbs_av1_write_obu(CodedBitstreamContext *ctx,
         {
             err = cbs_av1_write_metadata_obu(ctx, pbc, &obu->obu.metadata);
             if (err < 0)
-                goto error;
+                return err;
         }
         break;
     case AV1_OBU_PADDING:
         {
             err = cbs_av1_write_padding_obu(ctx, pbc, &obu->obu.padding);
             if (err < 0)
-                goto error;
+                return err;
         }
         break;
     default:
-        err = AVERROR(ENOSYS);
-        goto error;
+        return AVERROR(ENOSYS);
     }
 
     end_pos = put_bits_count(pbc);
@@ -1192,7 +1172,7 @@ static int cbs_av1_write_obu(CodedBitstreamContext *ctx,
         // Add trailing bits and recalculate.
         err = cbs_av1_write_trailing_bits(ctx, pbc, 8 - end_pos % 8);
         if (err < 0)
-            goto error;
+            return err;
         end_pos = put_bits_count(pbc);
         obu->obu_size = header_size = (end_pos - start_pos + 7) / 8;
     } else {
@@ -1210,19 +1190,14 @@ static int cbs_av1_write_obu(CodedBitstreamContext *ctx,
     *pbc = pbc_tmp;
     err = cbs_av1_write_leb128(ctx, pbc, "obu_size", obu->obu_size);
     if (err < 0)
-        goto error;
+        return err;
 
     data_pos = put_bits_count(pbc) / 8;
     flush_put_bits(pbc);
     av_assert0(data_pos <= start_pos);
 
-    if (8 * obu->obu_size > put_bits_left(pbc)) {
-        av_buffer_unref(&priv->sequence_header_ref);
-        av_buffer_unref(&priv->frame_header_ref);
-        *priv = av1ctx;
-
+    if (8 * obu->obu_size > put_bits_left(pbc))
         return AVERROR(ENOSPC);
-    }
 
     if (obu->obu_size > 0) {
         memmove(pbc->buf + data_pos,
@@ -1238,13 +1213,8 @@ static int cbs_av1_write_obu(CodedBitstreamContext *ctx,
 
     // OBU data must be byte-aligned.
     av_assert0(put_bits_count(pbc) % 8 == 0);
-    err = 0;
 
-error:
-    av_buffer_unref(&av1ctx.sequence_header_ref);
-    av_buffer_unref(&av1ctx.frame_header_ref);
-
-    return err;
+    return 0;
 }
 
 static int cbs_av1_assemble_fragment(CodedBitstreamContext *ctx,

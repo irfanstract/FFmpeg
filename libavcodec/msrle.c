@@ -28,11 +28,14 @@
  * The MS RLE decoder outputs PAL8 colorspace data.
  */
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "avcodec.h"
 #include "codec_internal.h"
 #include "decode.h"
+#include "internal.h"
 #include "msrledec.h"
 #include "libavutil/imgutils.h"
 
@@ -158,7 +161,7 @@ static av_cold int msrle_decode_end(AVCodecContext *avctx)
 
 const FFCodec ff_msrle_decoder = {
     .p.name         = "msrle",
-    CODEC_LONG_NAME("Microsoft RLE"),
+    .p.long_name    = NULL_IF_CONFIG_SMALL("Microsoft RLE"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_MSRLE,
     .priv_data_size = sizeof(MsrleContext),
@@ -167,4 +170,5 @@ const FFCodec ff_msrle_decoder = {
     FF_CODEC_DECODE_CB(msrle_decode_frame),
     .flush          = msrle_decode_flush,
     .p.capabilities = AV_CODEC_CAP_DR1,
+    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE,
 };

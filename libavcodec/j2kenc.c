@@ -115,7 +115,6 @@ typedef struct {
 
     int width, height; ///< image width and height
     uint8_t cbps[4]; ///< bits per sample in particular components
-    uint8_t comp_remap[4];
     int chroma_shift[2];
     uint8_t planar;
     int ncomponents;
@@ -320,8 +319,8 @@ static int put_siz(Jpeg2000EncoderContext *s)
 
     for (i = 0; i < s->ncomponents; i++){ // Ssiz_i XRsiz_i, YRsiz_i
         bytestream_put_byte(&s->buf, s->cbps[i] - 1);
-        bytestream_put_byte(&s->buf, (i+1&2)?1<<s->chroma_shift[0]:1);
-        bytestream_put_byte(&s->buf, (i+1&2)?1<<s->chroma_shift[1]:1);
+        bytestream_put_byte(&s->buf, i?1<<s->chroma_shift[0]:1);
+        bytestream_put_byte(&s->buf, i?1<<s->chroma_shift[1]:1);
     }
     return 0;
 }
@@ -432,7 +431,7 @@ static void compute_rates(Jpeg2000EncoderContext* s)
             for (compno = 0; compno < s->ncomponents; compno++) {
                 int tilew = tile->comp[compno].coord[0][1] - tile->comp[compno].coord[0][0];
                 int tileh = tile->comp[compno].coord[1][1] - tile->comp[compno].coord[1][0];
-                int scale = ((compno+1&2)?1 << s->chroma_shift[0]:1) * ((compno+1&2)?1 << s->chroma_shift[1]:1);
+                int scale = (compno?1 << s->chroma_shift[0]:1) * (compno?1 << s->chroma_shift[1]:1);
                 for (layno = 0; layno < s->nlayers; layno++) {
                     if (s->layer_rates[layno] > 0) {
                         tile->layer_rates[layno] += (double)(tilew * tileh) * s->ncomponents * s->cbps[compno] /
@@ -484,7 +483,7 @@ static int init_tiles(Jpeg2000EncoderContext *s)
                 comp->coord[0][1] = comp->coord_o[0][1] = FFMIN((tilex+1)*s->tile_width, s->width);
                 comp->coord[1][0] = comp->coord_o[1][0] = tiley * s->tile_height;
                 comp->coord[1][1] = comp->coord_o[1][1] = FFMIN((tiley+1)*s->tile_height, s->height);
-                if (compno + 1 & 2)
+                if (compno > 0)
                     for (i = 0; i < 2; i++)
                         for (j = 0; j < 2; j++)
                             comp->coord[i][j] = comp->coord_o[i][j] = ff_jpeg2000_ceildivpow2(comp->coord[i][j], s->chroma_shift[i]);
@@ -493,8 +492,8 @@ static int init_tiles(Jpeg2000EncoderContext *s)
                                                 codsty,
                                                 qntsty,
                                                 s->cbps[compno],
-                                                (compno+1&2)?1<<s->chroma_shift[0]:1,
-                                                (compno+1&2)?1<<s->chroma_shift[1]:1,
+                                                compno?1<<s->chroma_shift[0]:1,
+                                                compno?1<<s->chroma_shift[1]:1,
                                                 s->avctx
                                                )) < 0)
                     return ret;
@@ -508,32 +507,31 @@ static int init_tiles(Jpeg2000EncoderContext *s)
     static void copy_frame_ ##D(Jpeg2000EncoderContext *s)                                                                  \
     {                                                                                                                       \
         int tileno, compno, i, y, x;                                                                                        \
-        const PIXEL *line;                                                                                                  \
+        PIXEL *line;                                                                                                        \
         for (tileno = 0; tileno < s->numXtiles * s->numYtiles; tileno++){                                                   \
             Jpeg2000Tile *tile = s->tile + tileno;                                                                          \
             if (s->planar){                                                                                                 \
                 for (compno = 0; compno < s->ncomponents; compno++){                                                        \
-                    int icompno = s->comp_remap[compno];                                                                    \
                     Jpeg2000Component *comp = tile->comp + compno;                                                          \
                     int *dst = comp->i_data;                                                                                \
                     int cbps = s->cbps[compno];                                                                             \
-                    line = (const PIXEL*)s->picture->data[icompno]                                                           \
-                           + comp->coord[1][0] * (s->picture->linesize[icompno] / sizeof(PIXEL))                             \
+                    line = (PIXEL*)s->picture->data[compno]                                                                 \
+                           + comp->coord[1][0] * (s->picture->linesize[compno] / sizeof(PIXEL))                             \
                            + comp->coord[0][0];                                                                             \
                     for (y = comp->coord[1][0]; y < comp->coord[1][1]; y++){                                                \
-                        const PIXEL *ptr = line;                                                                            \
+                        PIXEL *ptr = line;                                                                                  \
                         for (x = comp->coord[0][0]; x < comp->coord[0][1]; x++)                                             \
                             *dst++ = *ptr++ - (1 << (cbps - 1));                                                            \
-                        line += s->picture->linesize[icompno] / sizeof(PIXEL);                                               \
+                        line += s->picture->linesize[compno] / sizeof(PIXEL);                                               \
                     }                                                                                                       \
                 }                                                                                                           \
             } else{                                                                                                         \
-                line = (const PIXEL*)(s->picture->data[0] + tile->comp[0].coord[1][0] * s->picture->linesize[0])            \
+                line = (PIXEL*)s->picture->data[0] + tile->comp[0].coord[1][0] * (s->picture->linesize[0] / sizeof(PIXEL))  \
                        + tile->comp[0].coord[0][0] * s->ncomponents;                                                        \
                                                                                                                             \
                 i = 0;                                                                                                      \
                 for (y = tile->comp[0].coord[1][0]; y < tile->comp[0].coord[1][1]; y++){                                    \
-                    const PIXEL *ptr = line;                                                                                \
+                    PIXEL *ptr = line;                                                                                      \
                     for (x = tile->comp[0].coord[0][0]; x < tile->comp[0].coord[0][1]; x++, i++){                           \
                         for (compno = 0; compno < s->ncomponents; compno++){                                                \
                             int cbps = s->cbps[compno];                                                                     \
@@ -1009,7 +1007,7 @@ static int encode_packets(Jpeg2000EncoderContext *s, Jpeg2000Tile *tile, int til
                     Jpeg2000Component *comp     = tile->comp + compno;
                     uint8_t reducedresno = codsty->nreslevels - 1 -reslevelno; //  ==> N_L - r
                     Jpeg2000ResLevel *reslevel = comp->reslevel + reslevelno;
-                    int log_subsampling[2] = { (compno+1&2)?s->chroma_shift[0]:0, (compno+1&2)?s->chroma_shift[1]:0};
+                    int log_subsampling[2] = { compno?s->chroma_shift[0]:0, compno?s->chroma_shift[1]:0};
                     unsigned prcx, prcy;
                     int trx0, try0;
 
@@ -1070,7 +1068,7 @@ static int encode_packets(Jpeg2000EncoderContext *s, Jpeg2000Tile *tile, int til
             for (x = tile_coord[0][0]; x < tile_coord[0][1]; x = (x/step_x + 1)*step_x) {
                 for (compno = 0; compno < s->ncomponents; compno++) {
                     Jpeg2000Component *comp     = tile->comp + compno;
-                    int log_subsampling[2] = { (compno+1&2)?s->chroma_shift[0]:0, (compno+1&2)?s->chroma_shift[1]:0};
+                    int log_subsampling[2] = { compno?s->chroma_shift[0]:0, compno?s->chroma_shift[1]:0};
 
                     for (reslevelno = 0; reslevelno < codsty->nreslevels; reslevelno++) {
                         unsigned prcx, prcy;
@@ -1116,7 +1114,7 @@ static int encode_packets(Jpeg2000EncoderContext *s, Jpeg2000Tile *tile, int til
     case JPEG2000_PGOD_CPRL:
         for (compno = 0; compno < s->ncomponents; compno++) {
             Jpeg2000Component *comp     = tile->comp + compno;
-            int log_subsampling[2] = { (compno+1&2)?s->chroma_shift[0]:0, (compno+1&2)?s->chroma_shift[1]:0};
+            int log_subsampling[2] = { compno?s->chroma_shift[0]:0, compno?s->chroma_shift[1]:0};
             step_x = 32;
             step_y = 32;
 
@@ -1599,7 +1597,7 @@ static int encode_frame(AVCodecContext *avctx, AVPacket *pkt,
         update_size(chunkstart, s->buf);
         if (avctx->pix_fmt == AV_PIX_FMT_PAL8) {
             int i;
-            const uint8_t *palette = pict->data[1];
+            uint8_t *palette = pict->data[1];
             chunkstart = s->buf;
             bytestream_put_be32(&s->buf, 0);
             bytestream_put_buffer(&s->buf, "pclr", 4);
@@ -1763,9 +1761,8 @@ static av_cold int j2kenc_init(AVCodecContext *avctx)
     s->height = avctx->height;
 
     s->ncomponents = desc->nb_components;
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < 3; i++) {
         s->cbps[i] = desc->comp[i].depth;
-        s->comp_remap[i] = i; //default
     }
 
     if ((desc->flags & AV_PIX_FMT_FLAG_PLANAR) && s->ncomponents > 1) {
@@ -1774,11 +1771,6 @@ static av_cold int j2kenc_init(AVCodecContext *avctx)
                                                s->chroma_shift, s->chroma_shift + 1);
         if (ret)
             return ret;
-        if (desc->flags & AV_PIX_FMT_FLAG_RGB) {
-            s->comp_remap[0] = 2;
-            s->comp_remap[1] = 0;
-            s->comp_remap[2] = 1;
-        }
     }
 
     ff_thread_once(&init_static_once, init_luts);
@@ -1834,35 +1826,21 @@ static const AVClass j2k_class = {
 
 const FFCodec ff_jpeg2000_encoder = {
     .p.name         = "jpeg2000",
-    CODEC_LONG_NAME("JPEG 2000"),
+    .p.long_name    = NULL_IF_CONFIG_SMALL("JPEG 2000"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_JPEG2000,
-    .p.capabilities = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_ENCODER_REORDERED_OPAQUE |
-                      AV_CODEC_CAP_FRAME_THREADS,
     .priv_data_size = sizeof(Jpeg2000EncoderContext),
     .init           = j2kenc_init,
     FF_CODEC_ENCODE_CB(encode_frame),
     .close          = j2kenc_destroy,
     .p.pix_fmts     = (const enum AVPixelFormat[]) {
-        AV_PIX_FMT_RGB24, AV_PIX_FMT_RGB48,
-        AV_PIX_FMT_GBR24P,AV_PIX_FMT_GBRP9, AV_PIX_FMT_GBRP10, AV_PIX_FMT_GBRP12, AV_PIX_FMT_GBRP14, AV_PIX_FMT_GBRP16,
-        AV_PIX_FMT_GRAY8, AV_PIX_FMT_GRAY9, AV_PIX_FMT_GRAY10, AV_PIX_FMT_GRAY12, AV_PIX_FMT_GRAY14, AV_PIX_FMT_GRAY16,
-        AV_PIX_FMT_YUV420P, AV_PIX_FMT_YUV420P9, AV_PIX_FMT_YUV420P10, AV_PIX_FMT_YUV420P12, AV_PIX_FMT_YUV420P14, AV_PIX_FMT_YUV420P16,
-        AV_PIX_FMT_YUV422P, AV_PIX_FMT_YUV422P9, AV_PIX_FMT_YUV422P10, AV_PIX_FMT_YUV422P12, AV_PIX_FMT_YUV422P14, AV_PIX_FMT_YUV422P16,
-        AV_PIX_FMT_YUV444P, AV_PIX_FMT_YUV444P9, AV_PIX_FMT_YUV444P10, AV_PIX_FMT_YUV444P12, AV_PIX_FMT_YUV444P14, AV_PIX_FMT_YUV444P16,
-        AV_PIX_FMT_YUV440P,                      AV_PIX_FMT_YUV440P10, AV_PIX_FMT_YUV440P12,
-        AV_PIX_FMT_YUV411P,
-        AV_PIX_FMT_YUV410P,
-
-        AV_PIX_FMT_RGBA,                                          AV_PIX_FMT_RGBA64,
-        AV_PIX_FMT_GBRAP, AV_PIX_FMT_GBRAP10, AV_PIX_FMT_GBRAP12, AV_PIX_FMT_GBRAP16,
-        AV_PIX_FMT_YUVA420P, AV_PIX_FMT_YUVA420P9, AV_PIX_FMT_YUVA420P10, AV_PIX_FMT_YUVA420P16,
-        AV_PIX_FMT_YUVA422P, AV_PIX_FMT_YUVA422P9, AV_PIX_FMT_YUVA422P10, AV_PIX_FMT_YUVA422P16,
-        AV_PIX_FMT_YUVA444P, AV_PIX_FMT_YUVA444P9, AV_PIX_FMT_YUVA444P10, AV_PIX_FMT_YUVA444P16,
-
+        AV_PIX_FMT_RGB24, AV_PIX_FMT_YUV444P, AV_PIX_FMT_GRAY8,
+        AV_PIX_FMT_YUV420P, AV_PIX_FMT_YUV422P,
+        AV_PIX_FMT_YUV410P, AV_PIX_FMT_YUV411P,
         AV_PIX_FMT_PAL8,
+        AV_PIX_FMT_RGB48, AV_PIX_FMT_GRAY16,
         AV_PIX_FMT_NONE
     },
     .p.priv_class   = &j2k_class,
-    .caps_internal  = FF_CODEC_CAP_INIT_CLEANUP,
+    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
 };

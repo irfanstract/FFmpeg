@@ -274,13 +274,6 @@ const AVCodecTag ff_codec_movvideo_tags[] = {
 
     { AV_CODEC_ID_RAWVIDEO, MKTAG('B', 'G', 'G', 'R') }, /* ASC Bayer BGGR */
 
-    { AV_CODEC_ID_MEDIA100, MKTAG('6', '0', '1', 'N') },
-    { AV_CODEC_ID_MEDIA100, MKTAG('6', '0', '1', 'P') },
-    { AV_CODEC_ID_MEDIA100, MKTAG('d', 't', 'n', 't') },
-    { AV_CODEC_ID_MEDIA100, MKTAG('d', 't', 'N', 'T') },
-    { AV_CODEC_ID_MEDIA100, MKTAG('d', 't', 'p', 'a') },
-    { AV_CODEC_ID_MEDIA100, MKTAG('d', 't', 'P', 'A') },
-
     { AV_CODEC_ID_NONE, 0 },
 };
 
@@ -321,6 +314,8 @@ const AVCodecTag ff_codec_movaudio_tags[] = {
     { AV_CODEC_ID_PCM_S16LE,       MKTAG('s', 'o', 'w', 't') },
     { AV_CODEC_ID_PCM_S16BE,       MKTAG('l', 'p', 'c', 'm') },
     { AV_CODEC_ID_PCM_S16LE,       MKTAG('l', 'p', 'c', 'm') },
+    { AV_CODEC_ID_PCM_S16BE,       MKTAG('i', 'p', 'c', 'm') },
+    { AV_CODEC_ID_PCM_S16LE,       MKTAG('i', 'p', 'c', 'm') },
     { AV_CODEC_ID_PCM_S24BE,       MKTAG('i', 'n', '2', '4') },
     { AV_CODEC_ID_PCM_S24LE,       MKTAG('i', 'n', '2', '4') },
     { AV_CODEC_ID_PCM_S32BE,       MKTAG('i', 'n', '3', '2') },
@@ -337,7 +332,7 @@ const AVCodecTag ff_codec_movaudio_tags[] = {
     { AV_CODEC_ID_SPEEX,           MKTAG('S', 'P', 'X', 'N') }, /* ZygoAudio (quality 10 mode) */
     { AV_CODEC_ID_EVRC,            MKTAG('s', 'e', 'v', 'c') }, /* 3GPP2 */
     { AV_CODEC_ID_SMV,             MKTAG('s', 's', 'm', 'v') }, /* 3GPP2 */
-    { AV_CODEC_ID_FLAC,            MKTAG('f', 'L', 'a', 'C') },
+    { AV_CODEC_ID_FLAC,            MKTAG('f', 'L', 'a', 'C') }, /* nonstandard */
     { AV_CODEC_ID_TRUEHD,          MKTAG('m', 'l', 'p', 'a') }, /* mp4ra.org */
     { AV_CODEC_ID_OPUS,            MKTAG('O', 'p', 'u', 's') }, /* mp4ra.org */
     { AV_CODEC_ID_MPEGH_3D_AUDIO,  MKTAG('m', 'h', 'm', '1') }, /* MPEG-H 3D Audio bitstream */

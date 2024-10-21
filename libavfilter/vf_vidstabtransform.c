@@ -23,9 +23,8 @@
 #include <vid.stab/libvidstab.h>
 
 #include "libavutil/common.h"
-#include "libavutil/file_open.h"
 #include "libavutil/opt.h"
-#include "libavutil/pixdesc.h"
+#include "libavutil/imgutils.h"
 #include "avfilter.h"
 #include "internal.h"
 

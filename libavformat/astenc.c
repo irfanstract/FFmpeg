@@ -23,7 +23,6 @@
 #include "avio_internal.h"
 #include "internal.h"
 #include "ast.h"
-#include "mux.h"
 #include "libavutil/mathematics.h"
 #include "libavutil/opt.h"
 
@@ -195,16 +194,16 @@ static const AVClass ast_muxer_class = {
     .version    = LIBAVUTIL_VERSION_INT,
 };
 
-const FFOutputFormat ff_ast_muxer = {
-    .p.name            = "ast",
-    .p.long_name       = NULL_IF_CONFIG_SMALL("AST (Audio Stream)"),
-    .p.extensions      = "ast",
+const AVOutputFormat ff_ast_muxer = {
+    .name              = "ast",
+    .long_name         = NULL_IF_CONFIG_SMALL("AST (Audio Stream)"),
+    .extensions        = "ast",
     .priv_data_size    = sizeof(ASTMuxContext),
-    .p.audio_codec     = AV_CODEC_ID_PCM_S16BE_PLANAR,
-    .p.video_codec     = AV_CODEC_ID_NONE,
+    .audio_codec       = AV_CODEC_ID_PCM_S16BE_PLANAR,
+    .video_codec       = AV_CODEC_ID_NONE,
     .write_header      = ast_write_header,
     .write_packet      = ast_write_packet,
     .write_trailer     = ast_write_trailer,
-    .p.priv_class      = &ast_muxer_class,
-    .p.codec_tag       = ff_ast_codec_tags_list,
+    .priv_class        = &ast_muxer_class,
+    .codec_tag         = ff_ast_codec_tags_list,
 };

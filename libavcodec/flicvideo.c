@@ -34,13 +34,15 @@
  * in which the header is only 12 bytes.
  */
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "libavutil/intreadwrite.h"
 #include "avcodec.h"
 #include "bytestream.h"
 #include "codec_internal.h"
-#include "decode.h"
+#include "internal.h"
 #include "mathops.h"
 
 #define FLI_256_COLOR 4
@@ -1104,7 +1106,7 @@ static av_cold int flic_decode_end(AVCodecContext *avctx)
 
 const FFCodec ff_flic_decoder = {
     .p.name         = "flic",
-    CODEC_LONG_NAME("Autodesk Animator Flic video"),
+    .p.long_name    = NULL_IF_CONFIG_SMALL("Autodesk Animator Flic video"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_FLIC,
     .priv_data_size = sizeof(FlicDecodeContext),
@@ -1112,4 +1114,5 @@ const FFCodec ff_flic_decoder = {
     .close          = flic_decode_end,
     FF_CODEC_DECODE_CB(flic_decode_frame),
     .p.capabilities = AV_CODEC_CAP_DR1,
+    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE,
 };

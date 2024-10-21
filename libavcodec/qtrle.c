@@ -31,12 +31,15 @@
  * data. 24-bit data is RGB24 and 32-bit data is RGB32.
  */
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "avcodec.h"
 #include "decode.h"
 #include "bytestream.h"
 #include "codec_internal.h"
+#include "internal.h"
 
 typedef struct QtrleContext {
     AVCodecContext *avctx;
@@ -580,7 +583,7 @@ static av_cold int qtrle_decode_end(AVCodecContext *avctx)
 
 const FFCodec ff_qtrle_decoder = {
     .p.name         = "qtrle",
-    CODEC_LONG_NAME("QuickTime Animation (RLE) video"),
+    .p.long_name    = NULL_IF_CONFIG_SMALL("QuickTime Animation (RLE) video"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_QTRLE,
     .priv_data_size = sizeof(QtrleContext),
@@ -589,4 +592,5 @@ const FFCodec ff_qtrle_decoder = {
     FF_CODEC_DECODE_CB(qtrle_decode_frame),
     .flush          = qtrle_decode_flush,
     .p.capabilities = AV_CODEC_CAP_DR1,
+    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE,
 };

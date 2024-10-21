@@ -686,14 +686,7 @@ static int pulse_write_frame(AVFormatContext *h, int stream_index,
     pkt.data     = (*frame)->data[0];
     pkt.size     = (*frame)->nb_samples * av_get_bytes_per_sample((*frame)->format) * (*frame)->ch_layout.nb_channels;
     pkt.dts      = (*frame)->pkt_dts;
-#if FF_API_PKT_DURATION
-FF_DISABLE_DEPRECATION_WARNINGS
-    if ((*frame)->pkt_duration)
-        pkt.duration = (*frame)->pkt_duration;
-    else
-FF_ENABLE_DEPRECATION_WARNINGS
-#endif
-    pkt.duration = (*frame)->duration;
+    pkt.duration = (*frame)->pkt_duration;
     return pulse_write_packet(h, &pkt);
 }
 
@@ -788,12 +781,12 @@ static const AVClass pulse_muxer_class = {
     .category       = AV_CLASS_CATEGORY_DEVICE_AUDIO_OUTPUT,
 };
 
-const FFOutputFormat ff_pulse_muxer = {
-    .p.name               = "pulse",
-    .p.long_name          = NULL_IF_CONFIG_SMALL("Pulse audio output"),
+const AVOutputFormat ff_pulse_muxer = {
+    .name                 = "pulse",
+    .long_name            = NULL_IF_CONFIG_SMALL("Pulse audio output"),
     .priv_data_size       = sizeof(PulseData),
-    .p.audio_codec        = AV_NE(AV_CODEC_ID_PCM_S16BE, AV_CODEC_ID_PCM_S16LE),
-    .p.video_codec        = AV_CODEC_ID_NONE,
+    .audio_codec          = AV_NE(AV_CODEC_ID_PCM_S16BE, AV_CODEC_ID_PCM_S16LE),
+    .video_codec          = AV_CODEC_ID_NONE,
     .write_header         = pulse_write_header,
     .write_packet         = pulse_write_packet,
     .write_uncoded_frame  = pulse_write_frame,
@@ -801,6 +794,6 @@ const FFOutputFormat ff_pulse_muxer = {
     .get_output_timestamp = pulse_get_output_timestamp,
     .get_device_list      = pulse_get_device_list,
     .control_message      = pulse_control_message,
-    .p.flags              = AVFMT_NOFILE | AVFMT_ALLOW_FLUSH,
-    .p.priv_class         = &pulse_muxer_class,
+    .flags                = AVFMT_NOFILE | AVFMT_ALLOW_FLUSH,
+    .priv_class           = &pulse_muxer_class,
 };

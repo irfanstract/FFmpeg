@@ -75,7 +75,7 @@ static int activate(AVFilterContext *ctx)
     TPadContext *s = ctx->priv;
     AVFrame *frame = NULL;
     int ret, status;
-    int64_t duration, pts;
+    int64_t pts;
 
     FF_FILTER_FORWARD_STATUS_BACK(outlink, inlink);
 
@@ -98,10 +98,8 @@ static int activate(AVFilterContext *ctx)
         ff_fill_rectangle(&s->draw, &s->color,
                           frame->data, frame->linesize,
                           0, 0, frame->width, frame->height);
-        duration = av_rescale_q(1, av_inv_q(outlink->frame_rate), outlink->time_base);
         frame->pts = s->pts;
-        frame->duration = duration;
-        s->pts += duration;
+        s->pts += av_rescale_q(1, av_inv_q(outlink->frame_rate), outlink->time_base);
         s->pad_start--;
         return ff_filter_frame(outlink, frame);
     }
@@ -118,10 +116,8 @@ static int activate(AVFilterContext *ctx)
         frame = av_frame_clone(s->cache_start);
         if (!frame)
             return AVERROR(ENOMEM);
-        duration = av_rescale_q(1, av_inv_q(outlink->frame_rate), outlink->time_base);
         frame->pts = s->pts;
-        frame->duration = duration;
-        s->pts += duration;
+        s->pts += av_rescale_q(1, av_inv_q(outlink->frame_rate), outlink->time_base);
         s->pad_start--;
         if (s->pad_start == 0)
             s->cache_start = NULL;
@@ -164,10 +160,8 @@ static int activate(AVFilterContext *ctx)
             if (!frame)
                 return AVERROR(ENOMEM);
         }
-        duration = av_rescale_q(1, av_inv_q(outlink->frame_rate), outlink->time_base);
         frame->pts = s->pts;
-        frame->duration = duration;
-        s->pts += duration;
+        s->pts += av_rescale_q(1, av_inv_q(outlink->frame_rate), outlink->time_base);
         if (s->pad_stop > 0)
             s->pad_stop--;
         return ff_filter_frame(outlink, frame);

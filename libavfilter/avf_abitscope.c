@@ -143,7 +143,6 @@ static int config_output(AVFilterLink *outlink)
     outlink->h = s->h;
     outlink->sample_aspect_ratio = (AVRational){1,1};
     outlink->frame_rate = s->frame_rate;
-    outlink->time_base = av_inv_q(outlink->frame_rate);
 
     return 0;
 }
@@ -213,7 +212,6 @@ static int filter_frame(AVFilterLink *inlink, AVFrame *insamples)
     AVFilterLink *outlink = ctx->outputs[0];
     AudioBitScopeContext *s = ctx->priv;
     AVFrame *outpicref;
-    int ret;
 
     if (s->mode == 0 || !s->outpicref) {
         outpicref = ff_get_video_buffer(outlink, outlink->w, outlink->h);
@@ -229,20 +227,13 @@ static int filter_frame(AVFilterLink *inlink, AVFrame *insamples)
     }
 
     if (s->mode == 1) {
-        ret = ff_inlink_make_frame_writable(outlink, &s->outpicref);
-        if (ret < 0) {
-            av_frame_free(&insamples);
-            return ret;
-        }
+        av_frame_make_writable(s->outpicref);
         outpicref = av_frame_clone(s->outpicref);
-        if (!outpicref) {
-            av_frame_free(&insamples);
+        if (!outpicref)
             return AVERROR(ENOMEM);
-        }
     }
 
-    outpicref->pts = av_rescale_q(insamples->pts, inlink->time_base, outlink->time_base);
-    outpicref->duration = 1;
+    outpicref->pts = insamples->pts;
     outpicref->sample_aspect_ratio = (AVRational){1,1};
 
     switch (insamples->format) {

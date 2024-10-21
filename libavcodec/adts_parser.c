@@ -47,30 +47,24 @@ int avpriv_adts_header_parse(AACADTSHeaderInfo **phdr, const uint8_t *buf, size_
 {
 #if CONFIG_ADTS_HEADER
     int ret = 0;
-    int allocated = 0;
     GetBitContext gb;
 
     if (!phdr || !buf || size < AV_AAC_ADTS_HEADER_SIZE)
         return AVERROR_INVALIDDATA;
 
-    if (!*phdr) {
-        allocated = 1;
-        *phdr = av_mallocz(sizeof(AACADTSHeaderInfo));
-    }
+    *phdr = av_mallocz(sizeof(AACADTSHeaderInfo));
     if (!*phdr)
         return AVERROR(ENOMEM);
 
     ret = init_get_bits8(&gb, buf, AV_AAC_ADTS_HEADER_SIZE);
     if (ret < 0) {
-        if (allocated)
-            av_freep(phdr);
+        av_freep(phdr);
         return ret;
     }
 
     ret = ff_adts_header_parse(&gb, *phdr);
     if (ret < 0) {
-        if (allocated)
-            av_freep(phdr);
+        av_freep(phdr);
         return ret;
     }
 

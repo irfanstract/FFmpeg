@@ -872,7 +872,7 @@ static int decode_frame(AVCodecContext *avctx, AVFrame *pic,
 
 const FFCodec ff_dxtory_decoder = {
     .p.name         = "dxtory",
-    CODEC_LONG_NAME("Dxtory"),
+    .p.long_name    = NULL_IF_CONFIG_SMALL("Dxtory"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_DXTORY,
     FF_CODEC_DECODE_CB(decode_frame),

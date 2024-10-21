@@ -29,14 +29,15 @@
 #include "libavutil/internal.h"
 #include "libavutil/mem_internal.h"
 #include "libavutil/thread.h"
+#include "libavutil/video_enc_params.h"
 
 #include "avcodec.h"
-#include "decode.h"
 #include "error_resilience.h"
 #include "mpegutils.h"
 #include "mpegvideo.h"
 #include "mpegvideodec.h"
 #include "golomb.h"
+#include "internal.h"
 #include "mathops.h"
 #include "mpeg_er.h"
 #include "qpeldsp.h"
@@ -702,7 +703,7 @@ static inline void rv34_mc(RV34DecContext *r, const int block_type,
     if (HAVE_THREADS && (s->avctx->active_thread_type & FF_THREAD_FRAME)) {
         /* wait for the referenced mb row to be finished */
         int mb_row = s->mb_y + ((yoff + my + 5 + 8 * height) >> 4);
-        const ThreadFrame *f = dir ? &s->next_picture_ptr->tf : &s->last_picture_ptr->tf;
+        ThreadFrame *f = dir ? &s->next_picture_ptr->tf : &s->last_picture_ptr->tf;
         ff_thread_await_progress(f, mb_row, 0);
     }
 
@@ -1444,7 +1445,7 @@ static int rv34_decode_slice(RV34DecContext *r, int end, const uint8_t* buf, int
 
     ff_init_block_index(s);
     while(!check_slice_end(r, s)) {
-        ff_update_block_index(s, 8, 0, 1);
+        ff_update_block_index(s);
 
         if(r->si.type)
             res = rv34_decode_inter_macroblock(r, r->intra_types + s->mb_x * 4 + 4);
@@ -1549,7 +1550,8 @@ int ff_rv34_decode_update_thread_context(AVCodecContext *dst, const AVCodecConte
 static int get_slice_offset(AVCodecContext *avctx, const uint8_t *buf, int n, int slice_count, int buf_size)
 {
     if (n < slice_count) {
-        return AV_RL32(buf + n*8 - 4) == 1 ? AV_RL32(buf + n*8) :  AV_RB32(buf + n*8);
+        if(avctx->slice_count) return avctx->slice_offset[n];
+        else                   return AV_RL32(buf + n*8 - 4) == 1 ? AV_RL32(buf + n*8) :  AV_RB32(buf + n*8);
     } else
         return buf_size;
 }
@@ -1567,7 +1569,7 @@ static int finish_frame(AVCodecContext *avctx, AVFrame *pict)
     if (HAVE_THREADS && (s->avctx->active_thread_type & FF_THREAD_FRAME))
         ff_thread_report_progress(&s->current_picture_ptr->tf, INT_MAX, 0);
 
-    if (s->pict_type == AV_PICTURE_TYPE_B) {
+    if (s->pict_type == AV_PICTURE_TYPE_B || s->low_delay) {
         if ((ret = av_frame_ref(pict, s->current_picture_ptr->f)) < 0)
             return ret;
         ff_print_debug_info(s, s->current_picture_ptr, pict);
@@ -1612,7 +1614,7 @@ int ff_rv34_decode_frame(AVCodecContext *avctx, AVFrame *pict,
     /* no supplementary picture */
     if (buf_size == 0) {
         /* special case for last picture */
-        if (s->next_picture_ptr) {
+        if (s->low_delay==0 && s->next_picture_ptr) {
             if ((ret = av_frame_ref(pict, s->next_picture_ptr->f)) < 0)
                 return ret;
             s->next_picture_ptr = NULL;
@@ -1622,10 +1624,13 @@ int ff_rv34_decode_frame(AVCodecContext *avctx, AVFrame *pict,
         return 0;
     }
 
-    slice_count = (*buf++) + 1;
-    slices_hdr = buf + 4;
-    buf += 8 * slice_count;
-    buf_size -= 1 + 8 * slice_count;
+    if(!avctx->slice_count){
+        slice_count = (*buf++) + 1;
+        slices_hdr = buf + 4;
+        buf += 8 * slice_count;
+        buf_size -= 1 + 8 * slice_count;
+    }else
+        slice_count = avctx->slice_count;
 
     offset = get_slice_offset(avctx, slices_hdr, 0, slice_count, buf_size);
     //parse first slice header to check whether this frame can be decoded

@@ -118,7 +118,6 @@ struct decklink_ctx {
 
     /* Status */
     int playback_started;
-    int64_t first_pts;
     int64_t last_pts;
     unsigned long frameCount;
     unsigned int dropped;

@@ -29,7 +29,6 @@
 #include <stdint.h>
 #include "config.h"
 
-#include "libavutil/attributes_internal.h"
 #include "libavutil/mem_internal.h"
 
 #if FFT_FLOAT
@@ -115,7 +114,7 @@ void ff_init_ff_cos_tabs(int index);
 #endif
 
 #define COSTABLE(size) \
-    COSTABLE_CONST attribute_visibility_hidden DECLARE_ALIGNED(32, FFTSample, FFT_NAME(ff_cos_##size))[size/2]
+    COSTABLE_CONST DECLARE_ALIGNED(32, FFTSample, FFT_NAME(ff_cos_##size))[size/2]
 
 extern COSTABLE(16);
 extern COSTABLE(32);

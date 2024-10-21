@@ -418,5 +418,4 @@ const AVFilter ff_vf_avgblur_vulkan = {
     FILTER_SINGLE_PIXFMT(AV_PIX_FMT_VULKAN),
     .priv_class     = &avgblur_vulkan_class,
     .flags_internal = FF_FILTER_FLAG_HWFRAME_AWARE,
-    .flags          = AVFILTER_FLAG_HWDEVICE,
 };

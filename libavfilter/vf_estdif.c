@@ -48,6 +48,7 @@ typedef struct ESTDIFContext {
     int max;
     int nb_planes;
     int nb_threads;
+    int64_t pts;
     AVFrame *prev;
 
     void (*interpolate)(struct ESTDIFContext *s, uint8_t *dst,
@@ -432,7 +433,7 @@ static int deinterlace_slice(AVFilterContext *ctx, void *arg,
     return 0;
 }
 
-static int filter(AVFilterContext *ctx, AVFrame *in, int64_t pts, int64_t duration)
+static int filter(AVFilterContext *ctx, int is_second, AVFrame *in)
 {
     ESTDIFContext *s = ctx->priv;
     AVFilterLink *outlink = ctx->outputs[0];
@@ -444,8 +445,7 @@ static int filter(AVFilterContext *ctx, AVFrame *in, int64_t pts, int64_t durati
         return AVERROR(ENOMEM);
     av_frame_copy_props(out, in);
     out->interlaced_frame = 0;
-    out->pts = pts;
-    out->duration = duration;
+    out->pts = s->pts;
 
     td.out = out; td.in = in;
     ff_filter_execute(ctx, deinterlace_slice, &td, NULL,
@@ -504,21 +504,21 @@ static int config_input(AVFilterLink *inlink)
 
     if ((s->deint && !s->prev->interlaced_frame) || ctx->is_disabled) {
         s->prev->pts *= 2;
-        s->prev->duration *= 2;
         ret = ff_filter_frame(ctx->outputs[0], s->prev);
         s->prev = in;
         return ret;
     }
 
-    ret = filter(ctx, s->prev, s->prev->pts * 2,
-                 s->prev->duration * (s->mode ? 1 : 2));
+    s->pts = s->prev->pts * 2;
+    ret = filter(ctx, 0, s->prev);
     if (ret < 0 || s->mode == 0) {
         av_frame_free(&s->prev);
         s->prev = in;
         return ret;
     }
 
-    ret = filter(ctx, s->prev, s->prev->pts + in->pts, in->duration);
+    s->pts = s->prev->pts + in->pts;
+    ret = filter(ctx, 1, s->prev);
     av_frame_free(&s->prev);
     s->prev = in;
     return ret;

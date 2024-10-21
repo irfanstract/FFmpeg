@@ -28,13 +28,14 @@
  * http://wiki.multimedia.cx/index.php?title=Electronic_Arts_TGV
  */
 
+#include "libavutil/imgutils.h"
 #include "libavutil/mem.h"
 
 #define BITSTREAM_READER_LE
 #include "avcodec.h"
 #include "get_bits.h"
 #include "codec_internal.h"
-#include "decode.h"
+#include "internal.h"
 
 #define EA_PREAMBLE_SIZE    8
 #define kVGT_TAG MKTAG('k', 'V', 'G', 'T')
@@ -359,7 +360,7 @@ static av_cold int tgv_decode_end(AVCodecContext *avctx)
 
 const FFCodec ff_eatgv_decoder = {
     .p.name         = "eatgv",
-    CODEC_LONG_NAME("Electronic Arts TGV video"),
+    .p.long_name    = NULL_IF_CONFIG_SMALL("Electronic Arts TGV video"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_TGV,
     .priv_data_size = sizeof(TgvContext),
@@ -367,4 +368,5 @@ const FFCodec ff_eatgv_decoder = {
     .close          = tgv_decode_end,
     FF_CODEC_DECODE_CB(tgv_decode_frame),
     .p.capabilities = AV_CODEC_CAP_DR1,
+    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE,
 };

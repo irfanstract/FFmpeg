@@ -47,7 +47,7 @@
 
 #if HAVE_OPENCL_VAAPI_INTEL_MEDIA
 #if CONFIG_LIBMFX
-#include <mfxstructures.h>
+#include <mfx/mfxstructures.h>
 #endif
 #include <va/va.h>
 #include <CL/cl_va_api_media_sharing_intel.h>

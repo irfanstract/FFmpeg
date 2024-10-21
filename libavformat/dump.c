@@ -30,12 +30,11 @@
 #include "libavutil/dovi_meta.h"
 #include "libavutil/mathematics.h"
 #include "libavutil/opt.h"
+#include "libavutil/avstring.h"
 #include "libavutil/replaygain.h"
 #include "libavutil/spherical.h"
 #include "libavutil/stereo3d.h"
 #include "libavutil/timecode.h"
-
-#include "libavcodec/avcodec.h"
 
 #include "avformat.h"
 #include "internal.h"
@@ -140,14 +139,16 @@ static void dump_metadata(void *ctx, const AVDictionary *m, const char *indent)
         const AVDictionaryEntry *tag = NULL;
 
         av_log(ctx, AV_LOG_INFO, "%sMetadata:\n", indent);
-        while ((tag = av_dict_iterate(m, tag)))
+        while ((tag = av_dict_get(m, "", tag, AV_DICT_IGNORE_SUFFIX)))
             if (strcmp("language", tag->key)) {
                 const char *p = tag->value;
                 av_log(ctx, AV_LOG_INFO,
                        "%s  %-16s: ", indent, tag->key);
                 while (*p) {
+                    char tmp[256];
                     size_t len = strcspn(p, "\x8\xa\xb\xc\xd");
-                    av_log(ctx, AV_LOG_INFO, "%.*s", (int)(FFMIN(255, len)), p);
+                    av_strlcpy(tmp, p, FFMIN(sizeof(tmp), len+1));
+                    av_log(ctx, AV_LOG_INFO, "%s", tmp);
                     p += len;
                     if (*p == 0xd) av_log(ctx, AV_LOG_INFO, " ");
                     if (*p == 0xa) av_log(ctx, AV_LOG_INFO, "\n%s  %-16s: ", indent, "");

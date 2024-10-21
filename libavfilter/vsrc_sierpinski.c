@@ -196,7 +196,6 @@ static int sierpinski_request_frame(AVFilterLink *link)
 
     frame->sample_aspect_ratio = (AVRational) {1, 1};
     frame->pts = s->pts++;
-    frame->duration = 1;
 
     draw_sierpinski(link->src, frame);
 

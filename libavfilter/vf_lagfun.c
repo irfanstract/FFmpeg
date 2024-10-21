@@ -173,7 +173,7 @@ static int filter_frame(AVFilterLink *inlink, AVFrame *in)
         av_frame_free(&in);
         return AVERROR(ENOMEM);
     }
-    av_frame_copy_props(out, in);
+    out->pts = in->pts;
 
     td.out = out;
     td.in = in;

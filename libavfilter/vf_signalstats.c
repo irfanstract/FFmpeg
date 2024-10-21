@@ -23,7 +23,6 @@
 #include "libavutil/intreadwrite.h"
 #include "libavutil/opt.h"
 #include "libavutil/pixdesc.h"
-#include "filters.h"
 #include "internal.h"
 
 enum FilterMode {
@@ -566,7 +565,7 @@ static int filter_frame8(AVFilterLink *link, AVFrame *in)
     int tothue = 0;
     int dify = 0, difu = 0, difv = 0;
     uint16_t masky = 0, masku = 0, maskv = 0;
-    int ret;
+
     int filtot[FILT_NUMB] = {0};
     AVFrame *prev;
 
@@ -589,16 +588,7 @@ static int filter_frame8(AVFilterLink *link, AVFrame *in)
 
     if (s->outfilter != FILTER_NONE) {
         out = av_frame_clone(in);
-        if (!out) {
-            av_frame_free(&in);
-            return AVERROR(ENOMEM);
-        }
-        ret = ff_inlink_make_frame_writable(link, &out);
-        if (ret < 0) {
-            av_frame_free(&out);
-            av_frame_free(&in);
-            return ret;
-        }
+        av_frame_make_writable(out);
     }
 
     ff_filter_execute(ctx, compute_sat_hue_metrics8, &td_huesat,
@@ -800,7 +790,7 @@ static int filter_frame16(AVFilterLink *link, AVFrame *in)
 
     int filtot[FILT_NUMB] = {0};
     AVFrame *prev;
-    int ret;
+
     AVFrame *sat = s->frame_sat;
     AVFrame *hue = s->frame_hue;
     const uint16_t *p_sat = (uint16_t *)sat->data[0];
@@ -820,16 +810,7 @@ static int filter_frame16(AVFilterLink *link, AVFrame *in)
 
     if (s->outfilter != FILTER_NONE) {
         out = av_frame_clone(in);
-        if (!out) {
-            av_frame_free(&in);
-            return AVERROR(ENOMEM);
-        }
-        ret = ff_inlink_make_frame_writable(link, &out);
-        if (ret < 0) {
-            av_frame_free(&out);
-            av_frame_free(&in);
-            return ret;
-        }
+        av_frame_make_writable(out);
     }
 
     ff_filter_execute(ctx, compute_sat_hue_metrics16, &td_huesat,

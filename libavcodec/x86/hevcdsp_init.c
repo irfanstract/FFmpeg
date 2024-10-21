@@ -29,10 +29,10 @@
 #include "libavcodec/x86/hevcdsp.h"
 
 #define LFC_FUNC(DIR, DEPTH, OPT) \
-void ff_hevc_ ## DIR ## _loop_filter_chroma_ ## DEPTH ## _ ## OPT(uint8_t *pix, ptrdiff_t stride, const int *tc, const uint8_t *no_p, const uint8_t *no_q);
+void ff_hevc_ ## DIR ## _loop_filter_chroma_ ## DEPTH ## _ ## OPT(uint8_t *pix, ptrdiff_t stride, int *tc, uint8_t *no_p, uint8_t *no_q);
 
 #define LFL_FUNC(DIR, DEPTH, OPT) \
-void ff_hevc_ ## DIR ## _loop_filter_luma_ ## DEPTH ## _ ## OPT(uint8_t *pix, ptrdiff_t stride, int beta, const int *tc, const uint8_t *no_p, const uint8_t *no_q);
+void ff_hevc_ ## DIR ## _loop_filter_luma_ ## DEPTH ## _ ## OPT(uint8_t *pix, ptrdiff_t stride, int beta, int *tc, uint8_t *no_p, uint8_t *no_q);
 
 #define LFC_FUNCS(type, depth, opt) \
     LFC_FUNC(h, depth, opt)  \
@@ -85,42 +85,46 @@ IDCT_FUNCS(avx)
 
 #define mc_rep_func(name, bitd, step, W, opt) \
 void ff_hevc_put_hevc_##name##W##_##bitd##_##opt(int16_t *_dst,                                                 \
-                                                 const uint8_t *_src, ptrdiff_t _srcstride, int height,         \
+                                                uint8_t *_src, ptrdiff_t _srcstride, int height,                \
                                                 intptr_t mx, intptr_t my, int width)                            \
 {                                                                                                               \
     int i;                                                                                                      \
+    uint8_t *src;                                                                                               \
     int16_t *dst;                                                                                               \
     for (i = 0; i < W; i += step) {                                                                             \
-        const uint8_t *src  = _src + (i * ((bitd + 7) / 8));                                                    \
+        src  = _src + (i * ((bitd + 7) / 8));                                                                   \
         dst = _dst + i;                                                                                         \
         ff_hevc_put_hevc_##name##step##_##bitd##_##opt(dst, src, _srcstride, height, mx, my, width);            \
     }                                                                                                           \
 }
 #define mc_rep_uni_func(name, bitd, step, W, opt) \
 void ff_hevc_put_hevc_uni_##name##W##_##bitd##_##opt(uint8_t *_dst, ptrdiff_t dststride,                        \
-                                                     const uint8_t *_src, ptrdiff_t _srcstride, int height,     \
+                                                    uint8_t *_src, ptrdiff_t _srcstride, int height,            \
                                                     intptr_t mx, intptr_t my, int width)                        \
 {                                                                                                               \
     int i;                                                                                                      \
+    uint8_t *src;                                                                                               \
     uint8_t *dst;                                                                                               \
     for (i = 0; i < W; i += step) {                                                                             \
-        const uint8_t *src = _src + (i * ((bitd + 7) / 8));                                                     \
+        src = _src + (i * ((bitd + 7) / 8));                                                                    \
         dst = _dst + (i * ((bitd + 7) / 8));                                                                    \
         ff_hevc_put_hevc_uni_##name##step##_##bitd##_##opt(dst, dststride, src, _srcstride,                     \
                                                           height, mx, my, width);                               \
     }                                                                                                           \
 }
 #define mc_rep_bi_func(name, bitd, step, W, opt) \
-void ff_hevc_put_hevc_bi_##name##W##_##bitd##_##opt(uint8_t *_dst, ptrdiff_t dststride, const uint8_t *_src,    \
-                                                    ptrdiff_t _srcstride, const int16_t *_src2,                 \
+void ff_hevc_put_hevc_bi_##name##W##_##bitd##_##opt(uint8_t *_dst, ptrdiff_t dststride, uint8_t *_src,          \
+                                                   ptrdiff_t _srcstride, int16_t* _src2,                        \
                                                    int height, intptr_t mx, intptr_t my, int width)             \
 {                                                                                                               \
     int i;                                                                                                      \
+    uint8_t  *src;                                                                                              \
     uint8_t  *dst;                                                                                              \
+    int16_t  *src2;                                                                                             \
     for (i = 0; i < W ; i += step) {                                                                            \
-        const uint8_t *src  = _src + (i * ((bitd + 7) / 8));                                                    \
-        const int16_t *src2 = _src2 + i;                                                                        \
+        src  = _src + (i * ((bitd + 7) / 8));                                                                   \
         dst  = _dst + (i * ((bitd + 7) / 8));                                                                   \
+        src2 = _src2 + i;                                                                                       \
         ff_hevc_put_hevc_bi_##name##step##_##bitd##_##opt(dst, dststride, src, _srcstride, src2,                \
                                                           height, mx, my, width);                               \
     }                                                                                                           \
@@ -133,7 +137,7 @@ void ff_hevc_put_hevc_bi_##name##W##_##bitd##_##opt(uint8_t *_dst, ptrdiff_t dst
 
 #define mc_rep_func2(name, bitd, step1, step2, W, opt) \
 void ff_hevc_put_hevc_##name##W##_##bitd##_##opt(int16_t *dst,                                                  \
-                                                 const uint8_t *src, ptrdiff_t _srcstride, int height,          \
+                                                 uint8_t *src, ptrdiff_t _srcstride, int height,                \
                                                  intptr_t mx, intptr_t my, int width)                           \
 {                                                                                                               \
     ff_hevc_put_hevc_##name##step1##_##bitd##_##opt(dst, src, _srcstride, height, mx, my, width);               \
@@ -142,7 +146,7 @@ void ff_hevc_put_hevc_##name##W##_##bitd##_##opt(int16_t *dst,                  
 }
 #define mc_rep_uni_func2(name, bitd, step1, step2, W, opt) \
 void ff_hevc_put_hevc_uni_##name##W##_##bitd##_##opt(uint8_t *dst, ptrdiff_t dststride,                         \
-                                                     const uint8_t *src, ptrdiff_t _srcstride, int height,      \
+                                                     uint8_t *src, ptrdiff_t _srcstride, int height,            \
                                                      intptr_t mx, intptr_t my, int width)                       \
 {                                                                                                               \
     ff_hevc_put_hevc_uni_##name##step1##_##bitd##_##opt(dst, dststride, src, _srcstride, height, mx, my, width);\
@@ -151,8 +155,8 @@ void ff_hevc_put_hevc_uni_##name##W##_##bitd##_##opt(uint8_t *dst, ptrdiff_t dst
                                                         height, mx, my, width);                                 \
 }
 #define mc_rep_bi_func2(name, bitd, step1, step2, W, opt) \
-void ff_hevc_put_hevc_bi_##name##W##_##bitd##_##opt(uint8_t *dst, ptrdiff_t dststride, const uint8_t *src,      \
-                                                    ptrdiff_t _srcstride, const int16_t *src2,                  \
+void ff_hevc_put_hevc_bi_##name##W##_##bitd##_##opt(uint8_t *dst, ptrdiff_t dststride, uint8_t *src,            \
+                                                    ptrdiff_t _srcstride, int16_t* src2,                        \
                                                     int height, intptr_t mx, intptr_t my, int width)            \
 {                                                                                                               \
     ff_hevc_put_hevc_bi_##name##step1##_##bitd##_##opt(dst, dststride, src, _srcstride, src2, height, mx, my, width);\
@@ -169,7 +173,7 @@ void ff_hevc_put_hevc_bi_##name##W##_##bitd##_##opt(uint8_t *dst, ptrdiff_t dsts
 #if ARCH_X86_64 && HAVE_SSE4_EXTERNAL
 
 #define mc_rep_mix_10(name, width1, width2, width3, opt1, opt2, width4)                                       \
-void ff_hevc_put_hevc_##name##width1##_10_##opt1(int16_t *dst, const uint8_t *src, ptrdiff_t _srcstride,      \
+void ff_hevc_put_hevc_##name##width1##_10_##opt1(int16_t *dst, uint8_t *src, ptrdiff_t _srcstride,            \
                                                  int height, intptr_t mx, intptr_t my, int width)             \
                                                                                                               \
 {                                                                                                             \
@@ -178,8 +182,8 @@ void ff_hevc_put_hevc_##name##width1##_10_##opt1(int16_t *dst, const uint8_t *sr
 }
 
 #define mc_bi_rep_mix_10(name, width1, width2, width3, opt1, opt2, width4)                                    \
-void ff_hevc_put_hevc_bi_##name##width1##_10_##opt1(uint8_t *dst, ptrdiff_t dststride, const uint8_t *src,    \
-                                                    ptrdiff_t _srcstride, const int16_t *src2,                \
+void ff_hevc_put_hevc_bi_##name##width1##_10_##opt1(uint8_t *dst, ptrdiff_t dststride, uint8_t *src,          \
+                                                    ptrdiff_t _srcstride, int16_t *src2,                      \
                                                     int height, intptr_t mx, intptr_t my, int width)          \
 {                                                                                                             \
     ff_hevc_put_hevc_bi_##name##width2##_10_##opt1(dst, dststride, src, _srcstride, src2,                     \
@@ -190,7 +194,7 @@ void ff_hevc_put_hevc_bi_##name##width1##_10_##opt1(uint8_t *dst, ptrdiff_t dsts
 
 #define mc_uni_rep_mix_10(name, width1, width2, width3, opt1, opt2, width4)                                   \
 void ff_hevc_put_hevc_uni_##name##width1##_10_##opt1(uint8_t *dst, ptrdiff_t dststride,                       \
-                                                     const uint8_t *src, ptrdiff_t _srcstride, int height,    \
+                                                     uint8_t *src, ptrdiff_t _srcstride, int height,          \
                                                      intptr_t mx, intptr_t my, int width)                     \
 {                                                                                                             \
     ff_hevc_put_hevc_uni_##name##width2##_10_##opt1(dst, dststride, src, _srcstride,                          \
@@ -205,7 +209,7 @@ mc_bi_rep_mix_10(name, width1, width2, width3, opt1, opt2, width4)         \
 mc_uni_rep_mix_10(name, width1, width2, width3, opt1, opt2, width4)
 
 #define mc_rep_mix_8(name, width1, width2, width3, opt1, opt2)                                                \
-void ff_hevc_put_hevc_##name##width1##_8_##opt1(int16_t *dst, const uint8_t *src, ptrdiff_t _srcstride,       \
+void ff_hevc_put_hevc_##name##width1##_8_##opt1(int16_t *dst, uint8_t *src, ptrdiff_t _srcstride,             \
                                                 int height, intptr_t mx, intptr_t my, int width)              \
                                                                                                               \
 {                                                                                                             \
@@ -214,8 +218,8 @@ void ff_hevc_put_hevc_##name##width1##_8_##opt1(int16_t *dst, const uint8_t *src
 }
 
 #define mc_bi_rep_mix_8(name, width1, width2, width3, opt1, opt2)                                             \
-void ff_hevc_put_hevc_bi_##name##width1##_8_##opt1(uint8_t *dst, ptrdiff_t dststride, const uint8_t *src,     \
-                                                   ptrdiff_t _srcstride, const int16_t *src2,                 \
+void ff_hevc_put_hevc_bi_##name##width1##_8_##opt1(uint8_t *dst, ptrdiff_t dststride, uint8_t *src,           \
+                                                   ptrdiff_t _srcstride, int16_t* src2,                       \
                                                    int height, intptr_t mx, intptr_t my, int width)           \
 {                                                                                                             \
     ff_hevc_put_hevc_bi_##name##width2##_8_##opt1(dst, dststride, src, _srcstride,                            \
@@ -226,7 +230,7 @@ void ff_hevc_put_hevc_bi_##name##width1##_8_##opt1(uint8_t *dst, ptrdiff_t dstst
 
 #define mc_uni_rep_mix_8(name, width1, width2, width3, opt1, opt2)                                            \
 void ff_hevc_put_hevc_uni_##name##width1##_8_##opt1(uint8_t *dst, ptrdiff_t dststride,                        \
-                                                    const uint8_t *src, ptrdiff_t _srcstride, int height,     \
+                                                    uint8_t *src, ptrdiff_t _srcstride, int height,           \
                                                     intptr_t mx, intptr_t my, int width)                      \
 {                                                                                                             \
     ff_hevc_put_hevc_uni_##name##width2##_8_##opt1(dst, dststride, src, _srcstride,                           \
@@ -430,13 +434,14 @@ mc_rep_funcs(qpel_hv,12,  8, 16, sse4)
 mc_rep_funcs(qpel_hv,12,  4, 12, sse4)
 
 #define mc_rep_uni_w(bitd, step, W, opt) \
-void ff_hevc_put_hevc_uni_w##W##_##bitd##_##opt(uint8_t *_dst, ptrdiff_t dststride, const int16_t *_src, \
+void ff_hevc_put_hevc_uni_w##W##_##bitd##_##opt(uint8_t *_dst, ptrdiff_t dststride, int16_t *_src, \
                                                int height, int denom,  int _wx, int _ox)                                \
 {                                                                                                                       \
     int i;                                                                                                              \
+    int16_t *src;                                                                                                       \
     uint8_t *dst;                                                                                                       \
     for (i = 0; i < W; i += step) {                                                                                     \
-        const int16_t *src = _src + i;                                                                                  \
+        src= _src + i;                                                                                                  \
         dst= _dst + (i * ((bitd + 7) / 8));                                                                             \
         ff_hevc_put_hevc_uni_w##step##_##bitd##_##opt(dst, dststride, src,                                   \
                                                      height, denom, _wx, _ox);                                          \
@@ -465,15 +470,17 @@ mc_rep_uni_w(12, 8, 48, sse4)
 mc_rep_uni_w(12, 8, 64, sse4)
 
 #define mc_rep_bi_w(bitd, step, W, opt) \
-void ff_hevc_put_hevc_bi_w##W##_##bitd##_##opt(uint8_t *_dst, ptrdiff_t dststride, const int16_t *_src, \
-                                               const int16_t *_src2, int height,                                        \
+void ff_hevc_put_hevc_bi_w##W##_##bitd##_##opt(uint8_t *_dst, ptrdiff_t dststride, int16_t *_src, \
+                                              int16_t *_src2, int height,                                               \
                                               int denom,  int _wx0,  int _wx1, int _ox0, int _ox1)                      \
 {                                                                                                                       \
     int i;                                                                                                              \
+    int16_t *src;                                                                                                       \
+    int16_t *src2;                                                                                                      \
     uint8_t *dst;                                                                                                       \
     for (i = 0; i < W; i += step) {                                                                                     \
-        const int16_t *src  = _src  + i;                                                                                \
-        const int16_t *src2 = _src2 + i;                                                                                \
+        src  = _src  + i;                                                                                               \
+        src2 = _src2 + i;                                                                                               \
         dst  = _dst  + (i * ((bitd + 7) / 8));                                                                          \
         ff_hevc_put_hevc_bi_w##step##_##bitd##_##opt(dst, dststride, src, src2,                             \
                                                      height, denom, _wx0, _wx1, _ox0, _ox1);                             \
@@ -503,7 +510,7 @@ mc_rep_bi_w(12, 8, 64, sse4)
 
 #define mc_uni_w_func(name, bitd, W, opt) \
 void ff_hevc_put_hevc_uni_w_##name##W##_##bitd##_##opt(uint8_t *_dst, ptrdiff_t _dststride,         \
-                                                       const uint8_t *_src, ptrdiff_t _srcstride,   \
+                                                      uint8_t *_src, ptrdiff_t _srcstride,          \
                                                       int height, int denom,                        \
                                                       int _wx, int _ox,                             \
                                                       intptr_t mx, intptr_t my, int width)          \
@@ -561,8 +568,8 @@ mc_uni_w_funcs(qpel_hv, 12, sse4)
 
 #define mc_bi_w_func(name, bitd, W, opt) \
 void ff_hevc_put_hevc_bi_w_##name##W##_##bitd##_##opt(uint8_t *_dst, ptrdiff_t _dststride,           \
-                                                      const uint8_t *_src, ptrdiff_t _srcstride,     \
-                                                      const int16_t *_src2,                          \
+                                                     uint8_t *_src, ptrdiff_t _srcstride,            \
+                                                     int16_t *_src2,                                 \
                                                      int height, int denom,                          \
                                                      int _wx0, int _wx1, int _ox0, int _ox1,         \
                                                      intptr_t mx, intptr_t my, int width)            \
@@ -621,16 +628,16 @@ mc_bi_w_funcs(qpel_hv, 12, sse4)
 #endif //ARCH_X86_64 && HAVE_SSE4_EXTERNAL
 
 #define SAO_BAND_FILTER_FUNCS(bitd, opt)                                                                                   \
-void ff_hevc_sao_band_filter_8_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src,  \
-                                              const int16_t *sao_offset_val, int sao_left_class, int width, int height);         \
-void ff_hevc_sao_band_filter_16_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src, \
-                                               const int16_t *sao_offset_val, int sao_left_class, int width, int height);        \
-void ff_hevc_sao_band_filter_32_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src, \
-                                               const int16_t *sao_offset_val, int sao_left_class, int width, int height);        \
-void ff_hevc_sao_band_filter_48_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src, \
-                                               const int16_t *sao_offset_val, int sao_left_class, int width, int height);        \
-void ff_hevc_sao_band_filter_64_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src, \
-                                               const int16_t *sao_offset_val, int sao_left_class, int width, int height);
+void ff_hevc_sao_band_filter_8_##bitd##_##opt(uint8_t *_dst, uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src,  \
+                                            int16_t *sao_offset_val, int sao_left_class, int width, int height);           \
+void ff_hevc_sao_band_filter_16_##bitd##_##opt(uint8_t *_dst, uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src, \
+                                            int16_t *sao_offset_val, int sao_left_class, int width, int height);           \
+void ff_hevc_sao_band_filter_32_##bitd##_##opt(uint8_t *_dst, uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src, \
+                                            int16_t *sao_offset_val, int sao_left_class, int width, int height);           \
+void ff_hevc_sao_band_filter_48_##bitd##_##opt(uint8_t *_dst, uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src, \
+                                            int16_t *sao_offset_val, int sao_left_class, int width, int height);           \
+void ff_hevc_sao_band_filter_64_##bitd##_##opt(uint8_t *_dst, uint8_t *_src, ptrdiff_t _stride_dst, ptrdiff_t _stride_src, \
+                                             int16_t *sao_offset_val, int sao_left_class, int width, int height);
 
 SAO_BAND_FILTER_FUNCS(8,  sse2)
 SAO_BAND_FILTER_FUNCS(10, sse2)
@@ -650,17 +657,17 @@ SAO_BAND_FILTER_FUNCS(12, avx2)
     c->sao_band_filter[4]      = ff_hevc_sao_band_filter_64_##bitd##_##opt; \
 } while (0)
 
-#define SAO_EDGE_FILTER_FUNCS(bitd, opt)                                                                      \
-void ff_hevc_sao_edge_filter_8_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t stride_dst,       \
-                                              const int16_t *sao_offset_val, int eo, int width, int height);  \
-void ff_hevc_sao_edge_filter_16_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t stride_dst,      \
-                                               const int16_t *sao_offset_val, int eo, int width, int height); \
-void ff_hevc_sao_edge_filter_32_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t stride_dst,      \
-                                               const int16_t *sao_offset_val, int eo, int width, int height); \
-void ff_hevc_sao_edge_filter_48_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t stride_dst,      \
-                                               const int16_t *sao_offset_val, int eo, int width, int height); \
-void ff_hevc_sao_edge_filter_64_##bitd##_##opt(uint8_t *_dst, const uint8_t *_src, ptrdiff_t stride_dst,      \
-                                               const int16_t *sao_offset_val, int eo, int width, int height); \
+#define SAO_EDGE_FILTER_FUNCS(bitd, opt)                                                                                    \
+void ff_hevc_sao_edge_filter_8_##bitd##_##opt(uint8_t *_dst, uint8_t *_src, ptrdiff_t stride_dst, int16_t *sao_offset_val,  \
+                                              int eo, int width, int height);                                               \
+void ff_hevc_sao_edge_filter_16_##bitd##_##opt(uint8_t *_dst, uint8_t *_src, ptrdiff_t stride_dst, int16_t *sao_offset_val, \
+                                               int eo, int width, int height);                                              \
+void ff_hevc_sao_edge_filter_32_##bitd##_##opt(uint8_t *_dst, uint8_t *_src, ptrdiff_t stride_dst, int16_t *sao_offset_val, \
+                                               int eo, int width, int height);                                              \
+void ff_hevc_sao_edge_filter_48_##bitd##_##opt(uint8_t *_dst, uint8_t *_src, ptrdiff_t stride_dst, int16_t *sao_offset_val, \
+                                               int eo, int width, int height);                                              \
+void ff_hevc_sao_edge_filter_64_##bitd##_##opt(uint8_t *_dst, uint8_t *_src, ptrdiff_t stride_dst, int16_t *sao_offset_val, \
+                                               int eo, int width, int height);                                              \
 
 SAO_EDGE_FILTER_FUNCS(8, ssse3)
 SAO_EDGE_FILTER_FUNCS(8, avx2)

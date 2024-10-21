@@ -38,20 +38,16 @@
 #include "libavutil/base64.h"
 #include "libavutil/bprint.h"
 #include "libavutil/dict.h"
-#include "libavutil/dict_internal.h"
 #include "libavutil/display.h"
-#include "libavutil/hdr_dynamic_metadata.h"
 #include "libavutil/intfloat.h"
 #include "libavutil/intreadwrite.h"
 #include "libavutil/lzo.h"
 #include "libavutil/mastering_display_metadata.h"
 #include "libavutil/mathematics.h"
 #include "libavutil/opt.h"
-#include "libavutil/pixdesc.h"
 #include "libavutil/time_internal.h"
 #include "libavutil/spherical.h"
 
-#include "libavcodec/avcodec.h"
 #include "libavcodec/bytestream.h"
 #include "libavcodec/flac.h"
 #include "libavcodec/mpeg4audio.h"
@@ -285,7 +281,6 @@ typedef struct MatroskaTrack {
     int needs_decoding;
     uint64_t max_block_additional_id;
     EbmlList block_addition_mappings;
-    int blockaddid_itu_t_t35;
 
     uint32_t palette[AVPALETTE_COUNT];
     int has_palette;
@@ -351,17 +346,13 @@ typedef struct MatroskaLevel {
     uint64_t length;
 } MatroskaLevel;
 
-typedef struct MatroskaBlockMore {
-    uint64_t additional_id;
-    EbmlBin  additional;
-} MatroskaBlockMore;
-
 typedef struct MatroskaBlock {
     uint64_t duration;
     CountedElement reference;
     uint64_t non_simple;
     EbmlBin  bin;
-    EbmlList blockmore;
+    uint64_t additional_id;
+    EbmlBin  additional;
     int64_t  discard_padding;
 } MatroskaBlock;
 
@@ -424,8 +415,6 @@ typedef struct MatroskaDemuxContext {
     int num_level1_elems;
 
     MatroskaCluster current_cluster;
-
-    int is_webm;
 
     /* WebM DASH Manifest live flag */
     int is_live;
@@ -595,7 +584,7 @@ static EbmlSyntax matroska_track_operation[] = {
 static EbmlSyntax matroska_block_addition_mapping[] = {
     { MATROSKA_ID_BLKADDIDVALUE,      EBML_UINT, 0, 0, offsetof(MatroskaBlockAdditionMapping, value) },
     { MATROSKA_ID_BLKADDIDNAME,       EBML_STR,  0, 0, offsetof(MatroskaBlockAdditionMapping, name) },
-    { MATROSKA_ID_BLKADDIDTYPE,       EBML_UINT, 0, 0, offsetof(MatroskaBlockAdditionMapping, type), { .u = MATROSKA_BLOCK_ADD_ID_TYPE_DEFAULT } },
+    { MATROSKA_ID_BLKADDIDTYPE,       EBML_UINT, 0, 0, offsetof(MatroskaBlockAdditionMapping, type) },
     { MATROSKA_ID_BLKADDIDEXTRADATA,  EBML_BIN,  0, 0, offsetof(MatroskaBlockAdditionMapping, extradata) },
     CHILD_OF(matroska_track)
 };
@@ -767,13 +756,13 @@ static EbmlSyntax matroska_segments[] = {
 };
 
 static EbmlSyntax matroska_blockmore[] = {
-    { MATROSKA_ID_BLOCKADDID,      EBML_UINT, 0, 0, offsetof(MatroskaBlockMore,additional_id), { .u = MATROSKA_BLOCK_ADD_ID_OPAQUE } },
-    { MATROSKA_ID_BLOCKADDITIONAL, EBML_BIN,  0, 0, offsetof(MatroskaBlockMore,additional) },
+    { MATROSKA_ID_BLOCKADDID,      EBML_UINT, 0, 0, offsetof(MatroskaBlock,additional_id), { .u = 1 } },
+    { MATROSKA_ID_BLOCKADDITIONAL, EBML_BIN,  0, 0, offsetof(MatroskaBlock,additional) },
     CHILD_OF(matroska_blockadditions)
 };
 
 static EbmlSyntax matroska_blockadditions[] = {
-    { MATROSKA_ID_BLOCKMORE, EBML_NEST, 0, sizeof(MatroskaBlockMore), offsetof(MatroskaBlock, blockmore), { .n = matroska_blockmore } },
+    { MATROSKA_ID_BLOCKMORE, EBML_NEST, 0, 0, 0, {.n = matroska_blockmore} },
     CHILD_OF(matroska_blockgroup)
 };
 
@@ -2194,8 +2183,8 @@ static int mkv_parse_video_color(AVStream *st, const MatroskaTrack *track) {
         color->chroma_siting_horz  < MATROSKA_COLOUR_CHROMASITINGHORZ_NB &&
         color->chroma_siting_vert  < MATROSKA_COLOUR_CHROMASITINGVERT_NB) {
         st->codecpar->chroma_location =
-            av_chroma_location_pos_to_enum((color->chroma_siting_horz - 1) << 7,
-                                           (color->chroma_siting_vert - 1) << 7);
+            avcodec_chroma_pos_to_enum((color->chroma_siting_horz - 1) << 7,
+                                       (color->chroma_siting_vert - 1) << 7);
     }
     if (color->max_cll && color->max_fall) {
         size_t size = 0;
@@ -2382,7 +2371,7 @@ static int mkv_parse_dvcc_dvvc(AVFormatContext *s, AVStream *st, const MatroskaT
     return ff_isom_parse_dvcc_dvvc(s, st, bin->data, bin->size);
 }
 
-static int mkv_parse_block_addition_mappings(AVFormatContext *s, AVStream *st, MatroskaTrack *track)
+static int mkv_parse_block_addition_mappings(AVFormatContext *s, AVStream *st, const MatroskaTrack *track)
 {
     const EbmlList *mappings_list = &track->block_addition_mappings;
     MatroskaBlockAdditionMapping *mappings = mappings_list->elem;
@@ -2392,20 +2381,8 @@ static int mkv_parse_block_addition_mappings(AVFormatContext *s, AVStream *st, M
         MatroskaBlockAdditionMapping *mapping = &mappings[i];
 
         switch (mapping->type) {
-        case MATROSKA_BLOCK_ADD_ID_TYPE_ITU_T_T35:
-            if (mapping->value != MATROSKA_BLOCK_ADD_ID_ITU_T_T35) {
-                int strict = s->strict_std_compliance >= FF_COMPLIANCE_STRICT;
-                av_log(s, strict ? AV_LOG_ERROR : AV_LOG_WARNING,
-                       "Invalid Block Addition Value 0x%"PRIx64" for Block Addition Mapping Type "
-                       "\"ITU T.35 metadata\"\n", mapping->value);
-                if (!strict)
-                    break;
-                return AVERROR_INVALIDDATA;
-            }
-            track->blockaddid_itu_t_t35 = 1;
-            break;
-        case MATROSKA_BLOCK_ADD_ID_TYPE_DVCC:
-        case MATROSKA_BLOCK_ADD_ID_TYPE_DVVC:
+        case MKBETAG('d','v','c','C'):
+        case MKBETAG('d','v','v','C'):
             if ((ret = mkv_parse_dvcc_dvvc(s, st, track, &mapping->extradata)) < 0)
                 return ret;
 
@@ -2830,40 +2807,9 @@ static int matroska_parse_tracks(AVFormatContext *s)
             AV_WL16(extradata, 0x410);
         } else if (codec_id == AV_CODEC_ID_PRORES && track->codec_priv.size == 4) {
             fourcc = AV_RL32(track->codec_priv.data);
-        } else if (codec_id == AV_CODEC_ID_VP9) {
+        } else if (codec_id == AV_CODEC_ID_VP9 && track->codec_priv.size) {
             /* we don't need any value stored in CodecPrivate.
                make sure that it's not exported as extradata. */
-            track->codec_priv.size = 0;
-            /* Assume BlockAddID 4 is ITU-T T.35 metadata if WebM */
-            track->blockaddid_itu_t_t35 = matroska->is_webm;
-        } else if (codec_id == AV_CODEC_ID_ARIB_CAPTION && track->codec_priv.size == 3) {
-            int component_tag = track->codec_priv.data[0];
-            int data_component_id = AV_RB16(track->codec_priv.data + 1);
-
-            switch (data_component_id) {
-            case 0x0008:
-                // [0x30..0x37] are component tags utilized for
-                // non-mobile captioning service ("profile A").
-                if (component_tag >= 0x30 && component_tag <= 0x37) {
-                    st->codecpar->profile = FF_PROFILE_ARIB_PROFILE_A;
-                }
-                break;
-            case 0x0012:
-                // component tag 0x87 signifies a mobile/partial reception
-                // (1seg) captioning service ("profile C").
-                if (component_tag == 0x87) {
-                    st->codecpar->profile = FF_PROFILE_ARIB_PROFILE_C;
-                }
-                break;
-            default:
-                break;
-            }
-
-            if (st->codecpar->profile == FF_PROFILE_UNKNOWN)
-                av_log(matroska->ctx, AV_LOG_WARNING,
-                       "Unknown ARIB caption profile utilized: %02x / %04x\n",
-                       component_tag, data_component_id);
-
             track->codec_priv.size = 0;
         }
         track->codec_priv.size -= extradata_offset;
@@ -3099,8 +3045,6 @@ static int matroska_read_header(AVFormatContext *s)
             return AVERROR_INVALIDDATA;
         }
     }
-    matroska->is_webm = !strcmp(ebml.doctype, "webm");
-
     ebml_free(ebml_syntax, &ebml);
 
     matroska->pkt = si->parse_pkt;
@@ -3634,74 +3578,12 @@ static int matroska_parse_webvtt(MatroskaDemuxContext *matroska,
     return 0;
 }
 
-static int matroska_parse_block_additional(MatroskaDemuxContext *matroska,
-                                           MatroskaTrack *track, AVPacket *pkt,
-                                           const uint8_t *data, int size, uint64_t id)
-{
-    uint8_t *side_data;
-    int res;
-
-    switch (id) {
-    case 4: {
-        GetByteContext bc;
-        int country_code, provider_code;
-        int provider_oriented_code, application_identifier;
-        size_t hdrplus_size;
-        AVDynamicHDRPlus *hdrplus;
-
-        if (!track->blockaddid_itu_t_t35 || size < 6)
-            break; //ignore
-
-        bytestream2_init(&bc, data, size);
-
-        /* ITU-T T.35 metadata */
-        country_code  = bytestream2_get_byteu(&bc);
-        provider_code = bytestream2_get_be16u(&bc);
-
-        if (country_code != 0xB5 || provider_code != 0x3C)
-            break; // ignore
-
-        provider_oriented_code = bytestream2_get_be16u(&bc);
-        application_identifier = bytestream2_get_byteu(&bc);
-
-        if (provider_oriented_code != 1 || application_identifier != 4)
-            break; // ignore
-
-        hdrplus = av_dynamic_hdr_plus_alloc(&hdrplus_size);
-        if (!hdrplus)
-            return AVERROR(ENOMEM);
-
-        if ((res = av_dynamic_hdr_plus_from_t35(hdrplus, bc.buffer,
-                                                bytestream2_get_bytes_left(&bc))) < 0 ||
-            (res = av_packet_add_side_data(pkt, AV_PKT_DATA_DYNAMIC_HDR10_PLUS,
-                                           (uint8_t *)hdrplus, hdrplus_size)) < 0) {
-            av_free(hdrplus);
-            return res;
-        }
-
-        return 0;
-    }
-    default:
-        break;
-    }
-
-    side_data = av_packet_new_side_data(pkt, AV_PKT_DATA_MATROSKA_BLOCKADDITIONAL,
-                                        size + (size_t)8);
-    if (!side_data)
-        return AVERROR(ENOMEM);
-
-    AV_WB64(side_data, id);
-    memcpy(side_data + 8, data, size);
-
-    return 0;
-}
-
 static int matroska_parse_frame(MatroskaDemuxContext *matroska,
                                 MatroskaTrack *track, AVStream *st,
                                 AVBufferRef *buf, uint8_t *data, int pkt_size,
                                 uint64_t timecode, uint64_t lace_duration,
                                 int64_t pos, int is_keyframe,
-                                MatroskaBlockMore *blockmore, int nb_blockmore,
+                                uint8_t *additional, uint64_t additional_id, int additional_size,
                                 int64_t discard_padding)
 {
     uint8_t *pkt_data = data;
@@ -3733,7 +3615,7 @@ static int matroska_parse_frame(MatroskaDemuxContext *matroska,
         buf = NULL;
     }
 
-    if (!pkt_size && !nb_blockmore)
+    if (!pkt_size && !additional_size)
         goto no_output;
 
     if (!buf)
@@ -3752,18 +3634,16 @@ static int matroska_parse_frame(MatroskaDemuxContext *matroska,
     pkt->flags        = is_keyframe;
     pkt->stream_index = st->index;
 
-    for (int i = 0; i < nb_blockmore; i++) {
-        MatroskaBlockMore *more = &blockmore[i];
-
-        if (!more->additional.size)
-            continue;
-
-        res = matroska_parse_block_additional(matroska, track, pkt, more->additional.data,
-                                              more->additional.size, more->additional_id);
-        if (res < 0) {
+    if (additional_size > 0) {
+        uint8_t *side_data = av_packet_new_side_data(pkt,
+                                                     AV_PKT_DATA_MATROSKA_BLOCKADDITIONAL,
+                                                     additional_size + 8);
+        if (!side_data) {
             av_packet_unref(pkt);
-            return res;
+            return AVERROR(ENOMEM);
         }
+        AV_WB64(side_data, additional_id);
+        memcpy(side_data + 8, additional, additional_size);
     }
 
     if (discard_padding) {
@@ -3809,7 +3689,7 @@ fail:
 static int matroska_parse_block(MatroskaDemuxContext *matroska, AVBufferRef *buf, uint8_t *data,
                                 int size, int64_t pos, uint64_t cluster_time,
                                 uint64_t block_duration, int is_keyframe,
-                                MatroskaBlockMore *blockmore, int nb_blockmore,
+                                uint8_t *additional, uint64_t additional_id, int additional_size,
                                 int64_t cluster_pos, int64_t discard_padding)
 {
     uint64_t timecode = AV_NOPTS_VALUE;
@@ -3944,7 +3824,7 @@ static int matroska_parse_block(MatroskaDemuxContext *matroska, AVBufferRef *buf
             res = matroska_parse_frame(matroska, track, st, buf, out_data,
                                        out_size, timecode, lace_duration,
                                        pos, !n ? is_keyframe : 0,
-                                       blockmore, nb_blockmore,
+                                       additional, additional_id, additional_size,
                                        discard_padding);
             if (res)
                 return res;
@@ -3985,12 +3865,14 @@ static int matroska_parse_cluster(MatroskaDemuxContext *matroska)
 
         if (res >= 0 && block->bin.size > 0) {
             int is_keyframe = block->non_simple ? block->reference.count == 0 : -1;
+            uint8_t* additional = block->additional.size > 0 ?
+                                    block->additional.data : NULL;
 
             res = matroska_parse_block(matroska, block->bin.buf, block->bin.data,
                                        block->bin.size, block->bin.pos,
                                        cluster->timecode, block->duration,
-                                       is_keyframe, block->blockmore.elem,
-                                       block->blockmore.nb_elem, cluster->pos,
+                                       is_keyframe, additional, block->additional_id,
+                                       block->additional.size, cluster->pos,
                                        block->discard_padding);
         }
 
@@ -4126,8 +4008,7 @@ typedef struct {
 
 /* This function searches all the Cues and returns the CueDesc corresponding to
  * the timestamp ts. Returned CueDesc will be such that start_time_ns <= ts <
- * end_time_ns. All 4 fields will be set to -1 if ts >= file's duration or
- * if an error occurred.
+ * end_time_ns. All 4 fields will be set to -1 if ts >= file's duration.
  */
 static CueDesc get_cue_desc(AVFormatContext *s, int64_t ts, int64_t cues_start) {
     MatroskaDemuxContext *matroska = s->priv_data;
@@ -4146,8 +4027,6 @@ static CueDesc get_cue_desc(AVFormatContext *s, int64_t ts, int64_t cues_start) 
         }
     }
     --i;
-    if (index_entries[i].timestamp > matroska->duration)
-        return (CueDesc) {-1, -1, -1, -1};
     cue_desc.start_time_ns = index_entries[i].timestamp * matroska->time_scale;
     cue_desc.start_offset = index_entries[i].pos - matroska->segment_start;
     if (i != nb_index_entries - 1) {
@@ -4307,15 +4186,18 @@ static int64_t webm_dash_manifest_compute_bandwidth(AVFormatContext *s, int64_t 
         int64_t prebuffer_ns = 1000000000;
         int64_t time_ns = sti->index_entries[i].timestamp * matroska->time_scale;
         double nano_seconds_per_second = 1000000000.0;
-        int64_t prebuffered_ns = time_ns + prebuffer_ns;
+        int64_t prebuffered_ns;
         double prebuffer_bytes = 0.0;
         int64_t temp_prebuffer_ns = prebuffer_ns;
         int64_t pre_bytes, pre_ns;
         double pre_sec, prebuffer, bits_per_second;
         CueDesc desc_beg = get_cue_desc(s, time_ns, cues_start);
-
         // Start with the first Cue.
         CueDesc desc_end = desc_beg;
+
+        if (time_ns > INT64_MAX - prebuffer_ns)
+            return -1;
+        prebuffered_ns = time_ns + prebuffer_ns;
 
         // Figure out how much data we have downloaded for the prebuffer. This will
         // be used later to adjust the bits per sample to try.

@@ -357,7 +357,7 @@ cglobal hscale%1to%2_%4, %5, 10, %6, pos0, dst, w, srcmem, filter, fltpos, fltsi
     add           wq, 2
 %endif ; %3 ==/!= X
     jl .loop
-    RET
+    REP_RET
 %endmacro
 
 ; SCALE_FUNCS source_width, intermediate_nbits, n_xmm

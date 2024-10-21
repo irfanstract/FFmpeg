@@ -21,7 +21,6 @@
 #include <caca.h>
 #include "libavutil/opt.h"
 #include "libavutil/pixdesc.h"
-#include "libavformat/mux.h"
 #include "avdevice.h"
 
 typedef struct CACAContext {
@@ -221,15 +220,15 @@ static const AVClass caca_class = {
     .category   = AV_CLASS_CATEGORY_DEVICE_VIDEO_OUTPUT,
 };
 
-const FFOutputFormat ff_caca_muxer = {
-    .p.name         = "caca",
-    .p.long_name    = NULL_IF_CONFIG_SMALL("caca (color ASCII art) output device"),
+const AVOutputFormat ff_caca_muxer = {
+    .name           = "caca",
+    .long_name      = NULL_IF_CONFIG_SMALL("caca (color ASCII art) output device"),
     .priv_data_size = sizeof(CACAContext),
-    .p.audio_codec  = AV_CODEC_ID_NONE,
-    .p.video_codec  = AV_CODEC_ID_RAWVIDEO,
+    .audio_codec    = AV_CODEC_ID_NONE,
+    .video_codec    = AV_CODEC_ID_RAWVIDEO,
     .write_header   = caca_write_header,
     .write_packet   = caca_write_packet,
     .deinit         = caca_deinit,
-    .p.flags        = AVFMT_NOFILE,
-    .p.priv_class   = &caca_class,
+    .flags          = AVFMT_NOFILE,
+    .priv_class     = &caca_class,
 };

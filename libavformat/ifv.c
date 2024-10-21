@@ -21,7 +21,6 @@
  */
 
 #include "libavutil/channel_layout.h"
-#include "libavutil/dict_internal.h"
 #include "avformat.h"
 #include "internal.h"
 #include "avio_internal.h"

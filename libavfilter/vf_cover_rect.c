@@ -24,7 +24,6 @@
 
 #include "libavutil/imgutils.h"
 #include "libavutil/opt.h"
-#include "filters.h"
 #include "internal.h"
 
 #include "lavfutils.h"
@@ -126,7 +125,7 @@ static int filter_frame(AVFilterLink *inlink, AVFrame *in)
     AVFilterContext *ctx = inlink->dst;
     CoverContext *cover = ctx->priv;
     AVDictionaryEntry *ex, *ey, *ew, *eh;
-    int ret, x = -1, y = -1, w = -1, h = -1;
+    int x = -1, y = -1, w = -1, h = -1;
     char *xendptr = NULL, *yendptr = NULL, *wendptr = NULL, *hendptr = NULL;
 
     ex = av_dict_get(in->metadata, "lavfi.rect.x", NULL, AV_DICT_MATCH_CASE);
@@ -171,11 +170,7 @@ static int filter_frame(AVFilterLink *inlink, AVFrame *in)
     x = av_clip(x, 0, in->width  - w);
     y = av_clip(y, 0, in->height - h);
 
-    ret = ff_inlink_make_frame_writable(inlink, &in);
-    if (ret < 0) {
-        av_frame_free(&in);
-        return ret;
-    }
+    av_frame_make_writable(in);
 
     if (cover->mode == MODE_BLUR) {
         blur (cover, in, x, y);

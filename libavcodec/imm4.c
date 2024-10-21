@@ -20,7 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "libavutil/mem_internal.h"
@@ -29,10 +30,10 @@
 #include "avcodec.h"
 #include "bswapdsp.h"
 #include "codec_internal.h"
-#include "decode.h"
 #include "copy_block.h"
 #include "get_bits.h"
 #include "idctdsp.h"
+#include "internal.h"
 
 #define CBPLO_VLC_BITS   6
 #define CBPHI_VLC_BITS   6
@@ -51,8 +52,9 @@ typedef struct IMM4Context {
     unsigned lo;
     unsigned hi;
 
-    IDCTDSPContext idsp;
+    ScanTable intra_scantable;
     DECLARE_ALIGNED(32, int16_t, block)[6][64];
+    IDCTDSPContext idsp;
 } IMM4Context;
 
 static const uint8_t intra_cb[] = {
@@ -128,7 +130,7 @@ static int decode_block(AVCodecContext *avctx, GetBitContext *gb,
                         int block, int factor, int flag, int offset, int flag2)
 {
     IMM4Context *s = avctx->priv_data;
-    const uint8_t *idct_permutation = s->idsp.idct_permutation;
+    const uint8_t *scantable = s->intra_scantable.permutated;
     int i, last, len, factor2;
 
     for (i = !flag; i < 64; i++) {
@@ -151,17 +153,17 @@ static int decode_block(AVCodecContext *avctx, GetBitContext *gb,
         i += len;
         if (i >= 64)
             break;
-        s->block[block][idct_permutation[i]] = offset * (factor2 < 0 ? -1 : 1) + factor * factor2;
+        s->block[block][scantable[i]] = offset * (factor2 < 0 ? -1 : 1) + factor * factor2;
         if (last)
             break;
     }
 
     if (s->hi == 2 && flag2 && block < 4) {
         if (flag)
-            s->block[block][idct_permutation[0]]  *= 2;
-        s->block[block][idct_permutation[1]]  *= 2;
-        s->block[block][idct_permutation[8]]  *= 2;
-        s->block[block][idct_permutation[16]] *= 2;
+            s->block[block][scantable[0]]  *= 2;
+        s->block[block][scantable[1]]  *= 2;
+        s->block[block][scantable[8]]  *= 2;
+        s->block[block][scantable[16]] *= 2;
     }
 
     return 0;
@@ -171,7 +173,7 @@ static int decode_blocks(AVCodecContext *avctx, GetBitContext *gb,
                          unsigned cbp, int flag, int offset, unsigned flag2)
 {
     IMM4Context *s = avctx->priv_data;
-    const uint8_t *idct_permutation = s->idsp.idct_permutation;
+    const uint8_t *scantable = s->intra_scantable.permutated;
     int ret, i;
 
     memset(s->block, 0, sizeof(s->block));
@@ -184,7 +186,7 @@ static int decode_blocks(AVCodecContext *avctx, GetBitContext *gb,
                 x = 128;
             x *= 8;
 
-            s->block[i][idct_permutation[0]] = x;
+            s->block[i][scantable[0]] = x;
         }
 
         if (cbp & (1 << (5 - i))) {
@@ -494,9 +496,14 @@ static av_cold int decode_init(AVCodecContext *avctx)
 {
     static AVOnce init_static_once = AV_ONCE_INIT;
     IMM4Context *s = avctx->priv_data;
+    uint8_t table[64];
+
+    for (int i = 0; i < 64; i++)
+        table[i] = i;
 
     ff_bswapdsp_init(&s->bdsp);
     ff_idctdsp_init(&s->idsp, avctx);
+    ff_init_scantable(s->idsp.idct_permutation, &s->intra_scantable, table);
 
     s->prev_frame = av_frame_alloc();
     if (!s->prev_frame)
@@ -527,7 +534,7 @@ static av_cold int decode_close(AVCodecContext *avctx)
 
 const FFCodec ff_imm4_decoder = {
     .p.name           = "imm4",
-    CODEC_LONG_NAME("Infinity IMM4"),
+    .p.long_name      = NULL_IF_CONFIG_SMALL("Infinity IMM4"),
     .p.type           = AVMEDIA_TYPE_VIDEO,
     .p.id             = AV_CODEC_ID_IMM4,
     .priv_data_size   = sizeof(IMM4Context),
@@ -536,5 +543,6 @@ const FFCodec ff_imm4_decoder = {
     FF_CODEC_DECODE_CB(decode_frame),
     .flush            = decode_flush,
     .p.capabilities   = AV_CODEC_CAP_DR1,
-    .caps_internal    = FF_CODEC_CAP_INIT_CLEANUP,
+    .caps_internal    = FF_CODEC_CAP_INIT_THREADSAFE |
+                        FF_CODEC_CAP_INIT_CLEANUP,
 };

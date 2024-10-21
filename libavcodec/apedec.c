@@ -31,7 +31,7 @@
 #include "bswapdsp.h"
 #include "bytestream.h"
 #include "codec_internal.h"
-#include "decode.h"
+#include "internal.h"
 #include "get_bits.h"
 #include "unary.h"
 
@@ -1170,7 +1170,8 @@ static void predictor_decode_mono_3930(APEContext *ctx, int count)
 static av_always_inline int predictor_update_filter(APEPredictor64 *p,
                                                     const int decoded, const int filter,
                                                     const int delayA,  const int delayB,
-                                                    const int adaptA,  const int adaptB)
+                                                    const int adaptA,  const int adaptB,
+                                                    int compression_level)
 {
     int64_t predictionA, predictionB;
     int32_t sign;
@@ -1198,7 +1199,13 @@ static av_always_inline int predictor_update_filter(APEPredictor64 *p,
                   p->buf[delayB - 3] * p->coeffsB[filter][3] +
                   p->buf[delayB - 4] * p->coeffsB[filter][4];
 
-    p->lastA[filter] = decoded + ((int64_t)((uint64_t)predictionA + (predictionB >> 1)) >> 10);
+    if (compression_level < COMPRESSION_LEVEL_INSANE) {
+        predictionA = (int32_t)predictionA;
+        predictionB = (int32_t)predictionB;
+        p->lastA[filter] = (int32_t)(decoded + (unsigned)((int32_t)(predictionA + (predictionB >> 1)) >> 10));
+    } else {
+        p->lastA[filter] = decoded + ((int64_t)((uint64_t)predictionA + (predictionB >> 1)) >> 10);
+    }
     p->filterA[filter] = p->lastA[filter] + ((int64_t)(p->filterA[filter] * 31ULL) >> 5);
 
     sign = APESIGN(decoded);
@@ -1226,10 +1233,12 @@ static void predictor_decode_stereo_3950(APEContext *ctx, int count)
     while (count--) {
         /* Predictor Y */
         *decoded0 = predictor_update_filter(p, *decoded0, 0, YDELAYA, YDELAYB,
-                                            YADAPTCOEFFSA, YADAPTCOEFFSB);
+                                            YADAPTCOEFFSA, YADAPTCOEFFSB,
+                                            ctx->compression_level);
         decoded0++;
         *decoded1 = predictor_update_filter(p, *decoded1, 1, XDELAYA, XDELAYB,
-                                            XADAPTCOEFFSA, XADAPTCOEFFSB);
+                                            XADAPTCOEFFSA, XADAPTCOEFFSB,
+                                            ctx->compression_level);
         decoded1++;
 
         /* Combined */
@@ -1577,6 +1586,7 @@ static int ape_decode_frame(AVCodecContext *avctx, AVFrame *frame,
         ape_unpack_mono(s, blockstodecode);
     else
         ape_unpack_stereo(s, blockstodecode);
+    emms_c();
 
     if (s->error) {
         s->samples=0;
@@ -1611,13 +1621,24 @@ static int ape_decode_frame(AVCodecContext *avctx, AVFrame *frame,
     s->samples -= blockstodecode;
 
     if (avctx->err_recognition & AV_EF_CRCCHECK &&
-        s->fileversion >= 3900 && s->bps < 24) {
+        s->fileversion >= 3900) {
         uint32_t crc = s->CRC_state;
         const AVCRC *crc_tab = av_crc_get_table(AV_CRC_32_IEEE_LE);
+        int stride = s->bps == 24 ? 4 : (s->bps>>3);
+        int offset = s->bps == 24;
+        int bytes  = s->bps >> 3;
+
         for (i = 0; i < blockstodecode; i++) {
             for (ch = 0; ch < s->channels; ch++) {
-                uint8_t *smp = frame->data[ch] + (i*(s->bps >> 3));
-                crc = av_crc(crc_tab, crc, smp, s->bps >> 3);
+#if HAVE_BIGENDIAN
+                uint8_t *smp_native = frame->data[ch] + i*stride;
+                uint8_t smp[4];
+                for(int j = 0; j<stride; j++)
+                    smp[j] = smp_native[stride-j-1];
+#else
+                uint8_t *smp = frame->data[ch] + i*stride;
+#endif
+                crc = av_crc(crc_tab, crc, smp+offset, bytes);
             }
         }
 
@@ -1659,7 +1680,7 @@ static const AVClass ape_decoder_class = {
 
 const FFCodec ff_ape_decoder = {
     .p.name         = "ape",
-    CODEC_LONG_NAME("Monkey's Audio"),
+    .p.long_name    = NULL_IF_CONFIG_SMALL("Monkey's Audio"),
     .p.type         = AVMEDIA_TYPE_AUDIO,
     .p.id           = AV_CODEC_ID_APE,
     .priv_data_size = sizeof(APEContext),
@@ -1668,7 +1689,7 @@ const FFCodec ff_ape_decoder = {
     FF_CODEC_DECODE_CB(ape_decode_frame),
     .p.capabilities = AV_CODEC_CAP_SUBFRAMES | AV_CODEC_CAP_DELAY |
                       AV_CODEC_CAP_DR1,
-    .caps_internal  = FF_CODEC_CAP_INIT_CLEANUP,
+    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
     .flush          = ape_flush,
     .p.sample_fmts  = (const enum AVSampleFormat[]) { AV_SAMPLE_FMT_U8P,
                                                       AV_SAMPLE_FMT_S16P,

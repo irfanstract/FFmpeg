@@ -23,7 +23,6 @@
 
 #include <AMF/components/VideoEncoderVCE.h>
 #include <AMF/components/VideoEncoderHEVC.h>
-#include <AMF/components/VideoEncoderAV1.h>
 
 #include "libavutil/fifo.h"
 
@@ -117,11 +116,6 @@ typedef struct AmfContext {
     int                 min_qp_p;
     int                 max_qp_p;
     int                 tier;
-
-    // AV1 - specific options
-
-    enum AMF_VIDEO_ENCODER_AV1_ALIGNMENT_MODE_ENUM                 align;
-
 } AmfContext;
 
 extern const AVCodecHWConfigInternal *const ff_amfenc_hw_configs[];

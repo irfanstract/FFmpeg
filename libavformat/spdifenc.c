@@ -48,7 +48,6 @@
 
 #include "avformat.h"
 #include "avio_internal.h"
-#include "mux.h"
 #include "spdif.h"
 #include "libavcodec/ac3defs.h"
 #include "libavcodec/adts_parser.h"
@@ -411,8 +410,8 @@ static const uint8_t mat_end_code[16] = {
 
 static const struct {
     unsigned int pos;
-    unsigned int len;
     const uint8_t *code;
+    unsigned int len;
 } mat_codes[] = {
     MAT_CODE(0, mat_start_code),
     MAT_CODE(30708, mat_middle_code),
@@ -674,16 +673,16 @@ static int spdif_write_packet(struct AVFormatContext *s, AVPacket *pkt)
     return 0;
 }
 
-const FFOutputFormat ff_spdif_muxer = {
-    .p.name            = "spdif",
-    .p.long_name       = NULL_IF_CONFIG_SMALL("IEC 61937 (used on S/PDIF - IEC958)"),
-    .p.extensions      = "spdif",
+const AVOutputFormat ff_spdif_muxer = {
+    .name              = "spdif",
+    .long_name         = NULL_IF_CONFIG_SMALL("IEC 61937 (used on S/PDIF - IEC958)"),
+    .extensions        = "spdif",
     .priv_data_size    = sizeof(IEC61937Context),
-    .p.audio_codec     = AV_CODEC_ID_AC3,
-    .p.video_codec     = AV_CODEC_ID_NONE,
+    .audio_codec       = AV_CODEC_ID_AC3,
+    .video_codec       = AV_CODEC_ID_NONE,
     .write_header      = spdif_write_header,
     .write_packet      = spdif_write_packet,
     .deinit            = spdif_deinit,
-    .p.flags           = AVFMT_NOTIMESTAMPS,
-    .p.priv_class      = &spdif_class,
+    .flags             = AVFMT_NOTIMESTAMPS,
+    .priv_class        = &spdif_class,
 };

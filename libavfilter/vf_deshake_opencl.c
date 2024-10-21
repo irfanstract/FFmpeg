@@ -1413,15 +1413,8 @@ static int filter_frame(AVFilterLink *link, AVFrame *input_frame)
             &debug_matches, 1);
     }
 
-#if FF_API_PKT_DURATION
-FF_DISABLE_DEPRECATION_WARNINGS
     if (input_frame->pkt_duration) {
         duration = input_frame->pkt_duration;
-    } else
-FF_ENABLE_DEPRECATION_WARNINGS
-#endif
-    if (input_frame->duration) {
-        duration = input_frame->duration;
     } else {
         duration = av_rescale_q(1, av_inv_q(outlink->frame_rate), outlink->time_base);
     }
@@ -2169,6 +2162,5 @@ const AVFilter ff_vf_deshake_opencl = {
     FILTER_INPUTS(deshake_opencl_inputs),
     FILTER_OUTPUTS(deshake_opencl_outputs),
     FILTER_SINGLE_PIXFMT(AV_PIX_FMT_OPENCL),
-    .flags_internal = FF_FILTER_FLAG_HWFRAME_AWARE,
-    .flags          = AVFILTER_FLAG_HWDEVICE,
+    .flags_internal = FF_FILTER_FLAG_HWFRAME_AWARE
 };

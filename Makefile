@@ -67,8 +67,6 @@ tools/target_io_dem_fuzzer$(EXESUF): tools/target_io_dem_fuzzer.o $(FF_DEP_LIBS)
 
 tools/enum_options$(EXESUF): ELIBS = $(FF_EXTRALIBS)
 tools/enum_options$(EXESUF): $(FF_DEP_LIBS)
-tools/enc_recon_frame_test$(EXESUF): $(FF_DEP_LIBS)
-tools/enc_recon_frame_test$(EXESUF): ELIBS = $(FF_EXTRALIBS)
 tools/scale_slice_test$(EXESUF): $(FF_DEP_LIBS)
 tools/scale_slice_test$(EXESUF): ELIBS = $(FF_EXTRALIBS)
 tools/sofa2wavs$(EXESUF): ELIBS = $(FF_EXTRALIBS)
@@ -93,7 +91,7 @@ ffbuild/.config: $(CONFIGURABLE_COMPONENTS)
 SUBDIR_VARS := CLEANFILES FFLIBS HOSTPROGS TESTPROGS TOOLS               \
                HEADERS ARCH_HEADERS BUILT_HEADERS SKIPHEADERS            \
                ARMV5TE-OBJS ARMV6-OBJS ARMV8-OBJS VFP-OBJS NEON-OBJS     \
-               ALTIVEC-OBJS VSX-OBJS RVV-OBJS MMX-OBJS X86ASM-OBJS       \
+               ALTIVEC-OBJS VSX-OBJS MMX-OBJS X86ASM-OBJS                \
                MIPSFPU-OBJS MIPSDSPR2-OBJS MIPSDSP-OBJS MSA-OBJS         \
                MMI-OBJS LSX-OBJS LASX-OBJS OBJS SLIBOBJS SHLIBOBJS       \
                STLIBOBJS HOSTOBJS TESTOBJS

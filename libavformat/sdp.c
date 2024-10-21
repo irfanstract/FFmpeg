@@ -33,7 +33,6 @@
 #include "avc.h"
 #include "hevc.h"
 #include "rtp.h"
-#include "version.h"
 #if CONFIG_NETWORK
 #include "network.h"
 #endif

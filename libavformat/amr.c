@@ -30,7 +30,6 @@ Write and read amr data according to RFC3267, http://www.ietf.org/rfc/rfc3267.tx
 #include "avformat.h"
 #include "avio_internal.h"
 #include "internal.h"
-#include "mux.h"
 #include "rawdec.h"
 #include "rawenc.h"
 
@@ -267,15 +266,15 @@ const AVInputFormat ff_amrwb_demuxer = {
 #endif
 
 #if CONFIG_AMR_MUXER
-const FFOutputFormat ff_amr_muxer = {
-    .p.name            = "amr",
-    .p.long_name       = NULL_IF_CONFIG_SMALL("3GPP AMR"),
-    .p.mime_type       = "audio/amr",
-    .p.extensions      = "amr",
-    .p.audio_codec     = AV_CODEC_ID_AMR_NB,
-    .p.video_codec     = AV_CODEC_ID_NONE,
-    .p.flags           = AVFMT_NOTIMESTAMPS,
+const AVOutputFormat ff_amr_muxer = {
+    .name              = "amr",
+    .long_name         = NULL_IF_CONFIG_SMALL("3GPP AMR"),
+    .mime_type         = "audio/amr",
+    .extensions        = "amr",
+    .audio_codec       = AV_CODEC_ID_AMR_NB,
+    .video_codec       = AV_CODEC_ID_NONE,
     .write_header      = amr_write_header,
     .write_packet      = ff_raw_write_packet,
+    .flags             = AVFMT_NOTIMESTAMPS,
 };
 #endif

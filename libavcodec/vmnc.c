@@ -25,10 +25,14 @@
  * As Alex Beregszaszi discovered, this is effectively RFB data dump
  */
 
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "libavutil/common.h"
+#include "libavutil/intreadwrite.h"
 #include "avcodec.h"
 #include "codec_internal.h"
-#include "decode.h"
+#include "internal.h"
 #include "bytestream.h"
 
 enum EncTypes {
@@ -571,7 +575,7 @@ static av_cold int decode_end(AVCodecContext *avctx)
 
 const FFCodec ff_vmnc_decoder = {
     .p.name         = "vmnc",
-    CODEC_LONG_NAME("VMware Screen Codec / VMware Video"),
+    .p.long_name    = NULL_IF_CONFIG_SMALL("VMware Screen Codec / VMware Video"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_VMNC,
     .priv_data_size = sizeof(VmncContext),
@@ -579,4 +583,5 @@ const FFCodec ff_vmnc_decoder = {
     .close          = decode_end,
     FF_CODEC_DECODE_CB(decode_frame),
     .p.capabilities = AV_CODEC_CAP_DR1,
+    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE,
 };

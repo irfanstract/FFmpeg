@@ -23,7 +23,6 @@
 
 #include "avformat.h"
 #include "internal.h"
-#include "mux.h"
 #include "rawenc.h"
 
 static const char mode20_header[] = "#!iLBC20\n";
@@ -121,14 +120,14 @@ const AVInputFormat ff_ilbc_demuxer = {
 };
 
 #if CONFIG_ILBC_MUXER
-const FFOutputFormat ff_ilbc_muxer = {
-    .p.name         = "ilbc",
-    .p.long_name    = NULL_IF_CONFIG_SMALL("iLBC storage"),
-    .p.mime_type    = "audio/iLBC",
-    .p.extensions   = "lbc",
-    .p.audio_codec  = AV_CODEC_ID_ILBC,
-    .p.flags        = AVFMT_NOTIMESTAMPS,
+const AVOutputFormat ff_ilbc_muxer = {
+    .name         = "ilbc",
+    .long_name    = NULL_IF_CONFIG_SMALL("iLBC storage"),
+    .mime_type    = "audio/iLBC",
+    .extensions   = "lbc",
+    .audio_codec  = AV_CODEC_ID_ILBC,
     .write_header = ilbc_write_header,
     .write_packet = ff_raw_write_packet,
+    .flags        = AVFMT_NOTIMESTAMPS,
 };
 #endif

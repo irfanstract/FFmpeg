@@ -31,13 +31,12 @@
 #include <stdint.h>
 
 #include "libavutil/opt.h"
-#include "libavutil/tx.h"
-
 #include "ac3.h"
 #include "ac3defs.h"
 #include "ac3dsp.h"
 #include "avcodec.h"
 #include "codec_internal.h"
+#include "fft.h"
 #include "mathops.h"
 #include "me_cmp.h"
 #include "put_bits.h"
@@ -168,8 +167,7 @@ typedef struct AC3EncodeContext {
 #endif
     MECmpContext mecc;
     AC3DSPContext ac3dsp;                   ///< AC-3 optimized functions
-    AVTXContext *tx;                        ///< FFT context for MDCT calculation
-    av_tx_fn tx_fn;
+    FFTContext mdct;                        ///< FFT context for MDCT calculation
     const SampleType *mdct_window;          ///< MDCT window function array
 
     AC3Block blocks[AC3_MAX_BLOCKS];        ///< per-block info
@@ -259,6 +257,7 @@ typedef struct AC3EncodeContext {
     int warned_alternate_bitstream;
 
     /* fixed vs. float function pointers */
+    void (*mdct_end)(struct AC3EncodeContext *s);
     int  (*mdct_init)(struct AC3EncodeContext *s);
 
     /* fixed vs. float templated function pointers */

@@ -805,7 +805,8 @@ void ff_er_frame_start(ERContext *s)
 static int er_supported(ERContext *s)
 {
     if(s->avctx->hwaccel && s->avctx->hwaccel->decode_slice           ||
-       !s->cur_pic.f
+       !s->cur_pic.f                                                  ||
+       s->cur_pic.field_picture
     )
         return 0;
     return 1;
@@ -907,12 +908,6 @@ void ff_er_frame_end(ERContext *s)
                           (s->avctx->skip_top + s->avctx->skip_bottom)) {
         return;
     }
-
-    if (!s->warned_fields && (s->cur_pic.field_picture || s->cur_pic.f->interlaced_frame)) {
-        av_log(s->avctx, AV_LOG_WARNING, "Error concealment is not fully implemented for field pictures.\n");
-        s->warned_fields = 1;
-    }
-
     linesize = s->cur_pic.f->linesize;
 
     if (   s->avctx->codec_id == AV_CODEC_ID_MPEG2VIDEO
@@ -951,17 +946,17 @@ void ff_er_frame_end(ERContext *s)
         av_log(s->avctx, AV_LOG_ERROR, "Warning MVs not available\n");
 
         for (i = 0; i < 2; i++) {
-            s->ref_index[i]       = av_calloc(s->mb_stride * s->mb_height, 4 * sizeof(uint8_t));
-            s->motion_val_base[i] = av_calloc(size + 4, 2 * sizeof(uint16_t));
-            if (!s->ref_index[i] || !s->motion_val_base[i])
+            s->ref_index_buf[i]  = av_buffer_allocz(s->mb_stride * s->mb_height * 4 * sizeof(uint8_t));
+            s->motion_val_buf[i] = av_buffer_allocz((size + 4) * 2 * sizeof(uint16_t));
+            if (!s->ref_index_buf[i] || !s->motion_val_buf[i])
                 break;
-            s->cur_pic.ref_index[i]  = s->ref_index[i];
-            s->cur_pic.motion_val[i] = s->motion_val_base[i] + 4;
+            s->cur_pic.ref_index[i]  = s->ref_index_buf[i]->data;
+            s->cur_pic.motion_val[i] = (int16_t (*)[2])s->motion_val_buf[i]->data + 4;
         }
         if (i < 2) {
             for (i = 0; i < 2; i++) {
-                av_freep(&s->ref_index[i]);
-                av_freep(&s->motion_val_base[i]);
+                av_buffer_unref(&s->ref_index_buf[i]);
+                av_buffer_unref(&s->motion_val_buf[i]);
                 s->cur_pic.ref_index[i]  = NULL;
                 s->cur_pic.motion_val[i] = NULL;
             }
@@ -1348,8 +1343,8 @@ void ff_er_frame_end(ERContext *s)
     }
 
     for (i = 0; i < 2; i++) {
-        av_freep(&s->ref_index[i]);
-        av_freep(&s->motion_val_base[i]);
+        av_buffer_unref(&s->ref_index_buf[i]);
+        av_buffer_unref(&s->motion_val_buf[i]);
         s->cur_pic.ref_index[i]  = NULL;
         s->cur_pic.motion_val[i] = NULL;
     }

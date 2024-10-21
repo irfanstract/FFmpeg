@@ -24,11 +24,12 @@
  */
 
 /**
- * @file HW-accelerated decoding API usage.example
- * @example hw_decode.c
+ * @file
+ * HW-Accelerated decoding example.
  *
- * Perform HW-accelerated decoding with output frames from HW video
- * surfaces.
+ * @example hw_decode.c
+ * This example shows how to do HW-accelerated decoding with output
+ * frames from the HW video surfaces.
  */
 
 #include <stdio.h>

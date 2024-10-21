@@ -855,6 +855,8 @@ rgb_to_xy(float rc,
     *z = m[2][0] * rc + m[2][1] * gc + m[2][2] * bc;
 
     scale = *x + *y + *z;
+    if (scale == 0.f)
+        scale = 1.f;
     scale = 1.f / scale;
     *x = *x * scale;
     *y = *y * scale;
@@ -1008,44 +1010,27 @@ static void draw_line(uint16_t *const pixels, int linesize,
                       int w, int h,
                       const uint16_t *const rgbcolor)
 {
-    int sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1, x2;
-    int dx = FFABS(x1-x0), dy = FFABS(y1-y0), err = dx * dx + dy * dy;
-    int e2 = err == 0 ? 1 : 0xffffff / (dx + dy);
-
-    dx *= e2;
-    dy *= e2;
-    err = dx - dy;
+    int dx  = FFABS(x1 - x0), sx = x0 < x1 ? 1 : -1;
+    int dy  = FFABS(y1 - y0), sy = y0 < y1 ? 1 : -1;
+    int err = (dx > dy ? dx : -dy) / 2, e2;
 
     for (;;) {
-        pixels[y0 * linesize + x0 * 4 + 0] = rgbcolor[0]-(FFABS(err - dx + dy) >> 8);
-        pixels[y0 * linesize + x0 * 4 + 1] = rgbcolor[1]-(FFABS(err - dx + dy) >> 8);
-        pixels[y0 * linesize + x0 * 4 + 2] = rgbcolor[2]-(FFABS(err - dx + dy) >> 8);
-        pixels[y0 * linesize + x0 * 4 + 3] = rgbcolor[3]-(FFABS(err - dx + dy) >> 8);
+        pixels[y0 * linesize + x0 * 4 + 0] = rgbcolor[0];
+        pixels[y0 * linesize + x0 * 4 + 1] = rgbcolor[1];
+        pixels[y0 * linesize + x0 * 4 + 2] = rgbcolor[2];
+        pixels[y0 * linesize + x0 * 4 + 3] = rgbcolor[3];
+
+        if (x0 == x1 && y0 == y1)
+            break;
 
         e2 = err;
-        x2 = x0;
-        if (2 * e2 >= -dx) {
-            if (x0 == x1)
-                break;
-            if (e2 + dy < 0xff0000) {
-                pixels[(y0 + sy) * linesize + x0 * 4 + 0] = rgbcolor[0]-(FFABS(e2 + dy) >> 8);
-                pixels[(y0 + sy) * linesize + x0 * 4 + 1] = rgbcolor[1]-(FFABS(e2 + dy) >> 8);
-                pixels[(y0 + sy) * linesize + x0 * 4 + 2] = rgbcolor[2]-(FFABS(e2 + dy) >> 8);
-                pixels[(y0 + sy) * linesize + x0 * 4 + 3] = rgbcolor[3]-(FFABS(e2 + dy) >> 8);
-            }
+
+        if (e2 >-dx) {
             err -= dy;
             x0 += sx;
         }
 
-        if (2 * e2 <= dy) {
-            if (y0 == y1)
-                break;
-            if (dx - e2 < 0xff0000) {
-                pixels[y0 * linesize + (x2 + sx) * 4 + 0] = rgbcolor[0]-(FFABS(dx - e2) >> 8);
-                pixels[y0 * linesize + (x2 + sx) * 4 + 1] = rgbcolor[1]-(FFABS(dx - e2) >> 8);
-                pixels[y0 * linesize + (x2 + sx) * 4 + 2] = rgbcolor[2]-(FFABS(dx - e2) >> 8);
-                pixels[y0 * linesize + (x2 + sx) * 4 + 3] = rgbcolor[3]-(FFABS(dx - e2) >> 8);
-            }
+        if (e2 < dy) {
             err += dx;
             y0 += sy;
         }
@@ -1268,11 +1253,11 @@ static void filter_rgb48(AVFilterContext *ctx, const uint8_t *ptr,
                          float *cx, float *cy, int x, int y)
 {
     CiescopeContext *s = ctx->priv;
-    const float scale = 1.f / 65535.f;
+    const float scale = 1. / 65535.;
     const uint16_t *src = (const uint16_t*)(ptr + linesize * y + x * 6);
-    float r = (src[0] + 0.01f) * scale;
-    float g = (src[1] + 0.01f) * scale;
-    float b = (src[2] + 0.01f) * scale;
+    float r = src[0] * scale;
+    float g = src[1] * scale;
+    float b = src[2] * scale;
     float cz;
 
     rgb_to_xy(r, g, b, cx, cy, &cz, (const float (*)[3])s->m);
@@ -1283,11 +1268,11 @@ static void filter_rgba64(AVFilterContext *ctx, const uint8_t *ptr,
                           float *cx, float *cy, int x, int y)
 {
     CiescopeContext *s = ctx->priv;
-    const float scale = 1.f / 65535.f;
+    const float scale = 1. / 65535.;
     const uint16_t *src = (const uint16_t*)(ptr + linesize * y + x * 8);
-    float r = (src[0] + 0.01f) * scale;
-    float g = (src[1] + 0.01f) * scale;
-    float b = (src[2] + 0.01f) * scale;
+    float r = src[0] * scale;
+    float g = src[1] * scale;
+    float b = src[2] * scale;
     float cz;
 
     rgb_to_xy(r, g, b, cx, cy, &cz, (const float (*)[3])s->m);
@@ -1298,11 +1283,11 @@ static void filter_rgb24(AVFilterContext *ctx, const uint8_t *ptr,
                          float *cx, float *cy, int x, int y)
 {
     CiescopeContext *s = ctx->priv;
-    const float scale = 1.f / 255.f;
+    const float scale = 1. / 255.;
     const uint8_t *src = ptr + linesize * y + x * 3;
-    float r = (src[0] + 0.01f) * scale;
-    float g = (src[1] + 0.01f) * scale;
-    float b = (src[2] + 0.01f) * scale;
+    float r = src[0] * scale;
+    float g = src[1] * scale;
+    float b = src[2] * scale;
     float cz;
 
     rgb_to_xy(r, g, b, cx, cy, &cz, (const float (*)[3])s->m);
@@ -1313,11 +1298,11 @@ static void filter_rgba(AVFilterContext *ctx, const uint8_t *ptr,
                         float *cx, float *cy, int x, int y)
 {
     CiescopeContext *s = ctx->priv;
-    const float scale = 1.f / 255.f;
+    const float scale = 1. / 255.;
     const uint8_t *src = ptr + linesize * y + x * 4;
-    float r = (src[0] + 0.01f) * scale;
-    float g = (src[1] + 0.01f) * scale;
-    float b = (src[2] + 0.01f) * scale;
+    float r = src[0] * scale;
+    float g = src[1] * scale;
+    float b = src[2] * scale;
     float cz;
 
     rgb_to_xy(r, g, b, cx, cy, &cz, (const float (*)[3])s->m);
@@ -1407,7 +1392,6 @@ static int filter_frame(AVFilterLink *inlink, AVFrame *in)
         return AVERROR(ENOMEM);
     }
     out->pts = in->pts;
-    out->duration = in->duration;
 
     if (!s->background) {
         ret = draw_background(ctx);

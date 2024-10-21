@@ -226,7 +226,6 @@ static inline void fft_init(FFTContext **s, int nbits, int inverse)
 #endif
 }
 
-#if CONFIG_MDCT
 static inline void mdct_init(FFTContext **s, int nbits, int inverse, double scale)
 {
 #if AVFFT
@@ -253,7 +252,6 @@ static inline void imdct_calc(struct FFTContext *s, FFTSample *output, const FFT
     s->imdct_calc(s, output, input);
 #endif
 }
-#endif
 
 static inline void fft_permute(FFTContext *s, FFTComplex *z)
 {
@@ -594,14 +592,12 @@ int main(int argc, char **argv)
             time_start = av_gettime_relative();
             for (it = 0; it < nb_its; it++) {
                 switch (transform) {
-#if CONFIG_MDCT
                 case TRANSFORM_MDCT:
                     if (do_inverse)
                         imdct_calc(m, &tab->re, &tab1->re);
                     else
                         mdct_calc(m, &tab->re, &tab1->re);
                     break;
-#endif
                 case TRANSFORM_FFT:
                     memcpy(tab, tab1, fft_size * sizeof(FFTComplex));
                     fft_calc(s, tab);

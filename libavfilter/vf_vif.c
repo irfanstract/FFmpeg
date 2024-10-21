@@ -63,7 +63,7 @@ static const AVOption vif_options[] = {
     { NULL }
 };
 
-FRAMESYNC_DEFINE_CLASS(vif, VIFContext, fs);
+AVFILTER_DEFINE_CLASS(vif);
 
 static const uint8_t vif_filter1d_width1[4] = { 17, 9, 5, 3 };
 
@@ -631,7 +631,6 @@ static const AVFilterPad vif_outputs[] = {
 const AVFilter ff_vf_vif = {
     .name          = "vif",
     .description   = NULL_IF_CONFIG_SMALL("Calculate the VIF between two video streams."),
-    .preinit       = vif_framesync_preinit,
     .uninit        = uninit,
     .priv_size     = sizeof(VIFContext),
     .priv_class    = &vif_class,

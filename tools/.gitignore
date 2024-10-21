@@ -3,7 +3,6 @@
 /bisect.need
 /crypto_bench
 /cws2fws
-/enum_options
 /fourcc2pixfmt
 /ffescape
 /ffeval
@@ -13,10 +12,8 @@
 /pktdumper
 /probetest
 /qt-faststart
-/scale_slice_test
 /sidxindex
 /trasher
 /seek_print
 /uncoded_frame
-/venc_data_dump
 /zmqsend

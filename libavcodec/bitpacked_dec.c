@@ -143,7 +143,7 @@ static int bitpacked_decode(AVCodecContext *avctx, AVFrame *frame,
 
 const FFCodec ff_bitpacked_decoder = {
     .p.name          = "bitpacked",
-    CODEC_LONG_NAME("Bitpacked"),
+    .p.long_name     = NULL_IF_CONFIG_SMALL("Bitpacked"),
     .p.type          = AVMEDIA_TYPE_VIDEO,
     .p.id            = AV_CODEC_ID_BITPACKED,
     .p.capabilities  = AV_CODEC_CAP_FRAME_THREADS,
@@ -154,4 +154,5 @@ const FFCodec ff_bitpacked_decoder = {
         MKTAG('U', 'Y', 'V', 'Y'),
         FF_CODEC_TAGS_END,
     },
+    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE,
 };

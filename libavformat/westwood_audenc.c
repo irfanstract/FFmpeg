@@ -31,7 +31,6 @@
 #include "avformat.h"
 #include "avio_internal.h"
 #include "internal.h"
-#include "mux.h"
 #include <stdint.h>
 
 #define AUD_CHUNK_SIGNATURE 0x0000DEAF
@@ -126,13 +125,13 @@ static int wsaud_write_trailer(AVFormatContext *ctx)
     return 0;
 }
 
-const FFOutputFormat ff_wsaud_muxer = {
-    .p.name            = "wsaud",
-    .p.long_name       = NULL_IF_CONFIG_SMALL("Westwood Studios audio"),
-    .p.extensions      = "aud",
+const AVOutputFormat ff_wsaud_muxer = {
+    .name              = "wsaud",
+    .long_name         = NULL_IF_CONFIG_SMALL("Westwood Studios audio"),
+    .extensions        = "aud",
     .priv_data_size    = sizeof(AUDMuxContext),
-    .p.audio_codec     = AV_CODEC_ID_ADPCM_IMA_WS,
-    .p.video_codec     = AV_CODEC_ID_NONE,
+    .audio_codec       = AV_CODEC_ID_ADPCM_IMA_WS,
+    .video_codec       = AV_CODEC_ID_NONE,
     .init              = wsaud_write_init,
     .write_header      = wsaud_write_header,
     .write_packet      = wsaud_write_packet,

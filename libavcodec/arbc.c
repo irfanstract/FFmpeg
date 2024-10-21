@@ -19,13 +19,18 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "libavutil/imgutils.h"
 #include "libavutil/internal.h"
 #include "libavutil/intreadwrite.h"
 
 #include "avcodec.h"
 #include "bytestream.h"
 #include "codec_internal.h"
-#include "decode.h"
+#include "internal.h"
 
 typedef struct ARBCContext {
     GetByteContext gb;
@@ -208,7 +213,7 @@ static av_cold int decode_close(AVCodecContext *avctx)
 
 const FFCodec ff_arbc_decoder = {
     .p.name         = "arbc",
-    CODEC_LONG_NAME("Gryphon's Anim Compressor"),
+    .p.long_name    = NULL_IF_CONFIG_SMALL("Gryphon's Anim Compressor"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_ARBC,
     .priv_data_size = sizeof(ARBCContext),
@@ -217,5 +222,5 @@ const FFCodec ff_arbc_decoder = {
     .flush          = decode_flush,
     .close          = decode_close,
     .p.capabilities = AV_CODEC_CAP_DR1,
-    .caps_internal  = FF_CODEC_CAP_INIT_CLEANUP,
+    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
 };

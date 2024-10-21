@@ -75,8 +75,8 @@ typedef struct ERContext {
     ERPicture last_pic;
     ERPicture next_pic;
 
-    int8_t *ref_index[2];
-    int16_t (*motion_val_base[2])[2];
+    AVBufferRef *ref_index_buf[2];
+    AVBufferRef *motion_val_buf[2];
 
     uint16_t pp_time;
     uint16_t pb_time;
@@ -87,7 +87,6 @@ typedef struct ERContext {
                       int (*mv)[2][4][2],
                       int mb_x, int mb_y, int mb_intra, int mb_skipped);
     void *opaque;
-    int warned_fields;
 } ERContext;
 
 void ff_er_frame_start(ERContext *s);

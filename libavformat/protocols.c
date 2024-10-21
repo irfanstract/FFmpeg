@@ -17,7 +17,6 @@
  */
 
 #include "libavutil/avstring.h"
-#include "libavutil/log.h"
 #include "libavutil/mem.h"
 
 #include "url.h"
@@ -29,7 +28,6 @@ extern const URLProtocol ff_concat_protocol;
 extern const URLProtocol ff_concatf_protocol;
 extern const URLProtocol ff_crypto_protocol;
 extern const URLProtocol ff_data_protocol;
-extern const URLProtocol ff_fd_protocol;
 extern const URLProtocol ff_ffrtmpcrypt_protocol;
 extern const URLProtocol ff_ffrtmphttp_protocol;
 extern const URLProtocol ff_file_protocol;
@@ -73,8 +71,8 @@ extern const URLProtocol ff_libsrt_protocol;
 extern const URLProtocol ff_libssh_protocol;
 extern const URLProtocol ff_libsmbclient_protocol;
 extern const URLProtocol ff_libzmq_protocol;
-extern const URLProtocol ff_ipfs_gateway_protocol;
-extern const URLProtocol ff_ipns_gateway_protocol;
+extern const URLProtocol ff_ipfs_protocol;
+extern const URLProtocol ff_ipns_protocol;
 
 #include "libavformat/protocol_list.c"
 

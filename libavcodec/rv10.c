@@ -32,11 +32,11 @@
 
 #include "avcodec.h"
 #include "codec_internal.h"
-#include "decode.h"
 #include "error_resilience.h"
 #include "h263.h"
 #include "h263data.h"
 #include "h263dec.h"
+#include "internal.h"
 #include "mpeg_er.h"
 #include "mpegutils.h"
 #include "mpegvideo.h"
@@ -531,7 +531,7 @@ static int rv10_decode_packet(AVCodecContext *avctx, const uint8_t *buf,
     /* decode each macroblock */
     for (s->mb_num_left = mb_count; s->mb_num_left > 0; s->mb_num_left--) {
         int ret;
-        ff_update_block_index(s, 8, s->avctx->lowres, 1);
+        ff_update_block_index(s);
         ff_tlog(avctx, "**mb x=%d y=%d\n", s->mb_x, s->mb_y);
 
         s->mv_dir  = MV_DIR_FORWARD;
@@ -587,7 +587,10 @@ static int rv10_decode_packet(AVCodecContext *avctx, const uint8_t *buf,
 
 static int get_slice_offset(AVCodecContext *avctx, const uint8_t *buf, int n)
 {
-    return AV_RL32(buf + n * 8);
+    if (avctx->slice_count)
+        return avctx->slice_offset[n];
+    else
+        return AV_RL32(buf + n * 8);
 }
 
 static int rv10_decode_frame(AVCodecContext *avctx, AVFrame *pict,
@@ -600,25 +603,28 @@ static int rv10_decode_frame(AVCodecContext *avctx, AVFrame *pict,
     int slice_count;
     const uint8_t *slices_hdr = NULL;
 
-    ff_dlog(avctx, "*****frame %"PRId64" size=%d\n", avctx->frame_num, buf_size);
+    ff_dlog(avctx, "*****frame %d size=%d\n", avctx->frame_number, buf_size);
 
     /* no supplementary picture */
     if (buf_size == 0) {
         return 0;
     }
 
-    slice_count = (*buf++) + 1;
-    buf_size--;
+    if (!avctx->slice_count) {
+        slice_count = (*buf++) + 1;
+        buf_size--;
 
-    if (!slice_count || buf_size <= 8 * slice_count) {
-        av_log(avctx, AV_LOG_ERROR, "Invalid slice count: %d.\n",
-               slice_count);
-        return AVERROR_INVALIDDATA;
-    }
+        if (!slice_count || buf_size <= 8 * slice_count) {
+            av_log(avctx, AV_LOG_ERROR, "Invalid slice count: %d.\n",
+                   slice_count);
+            return AVERROR_INVALIDDATA;
+        }
 
-    slices_hdr = buf + 4;
-    buf       += 8 * slice_count;
-    buf_size  -= 8 * slice_count;
+        slices_hdr = buf + 4;
+        buf       += 8 * slice_count;
+        buf_size  -= 8 * slice_count;
+    } else
+        slice_count = avctx->slice_count;
 
     for (i = 0; i < slice_count; i++) {
         unsigned offset = get_slice_offset(avctx, slices_hdr, i);
@@ -677,7 +683,7 @@ static int rv10_decode_frame(AVCodecContext *avctx, AVFrame *pict,
 
 const FFCodec ff_rv10_decoder = {
     .p.name         = "rv10",
-    CODEC_LONG_NAME("RealVideo 1.0"),
+    .p.long_name    = NULL_IF_CONFIG_SMALL("RealVideo 1.0"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_RV10,
     .priv_data_size = sizeof(RVDecContext),
@@ -685,6 +691,7 @@ const FFCodec ff_rv10_decoder = {
     .close          = rv10_decode_end,
     FF_CODEC_DECODE_CB(rv10_decode_frame),
     .p.capabilities = AV_CODEC_CAP_DR1,
+    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE,
     .p.max_lowres   = 3,
     .p.pix_fmts     = (const enum AVPixelFormat[]) {
         AV_PIX_FMT_YUV420P,
@@ -694,7 +701,7 @@ const FFCodec ff_rv10_decoder = {
 
 const FFCodec ff_rv20_decoder = {
     .p.name         = "rv20",
-    CODEC_LONG_NAME("RealVideo 2.0"),
+    .p.long_name    = NULL_IF_CONFIG_SMALL("RealVideo 2.0"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_RV20,
     .priv_data_size = sizeof(RVDecContext),
@@ -702,6 +709,7 @@ const FFCodec ff_rv20_decoder = {
     .close          = rv10_decode_end,
     FF_CODEC_DECODE_CB(rv10_decode_frame),
     .p.capabilities = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_DELAY,
+    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE,
     .flush          = ff_mpeg_flush,
     .p.max_lowres   = 3,
     .p.pix_fmts     = (const enum AVPixelFormat[]) {

@@ -19,7 +19,6 @@
  */
 
 #include <stdlib.h>
-#include "libavcodec/avcodec.h"
 #include "libavcodec/get_bits.h"
 #include "libavcodec/flac.h"
 #include "avformat.h"

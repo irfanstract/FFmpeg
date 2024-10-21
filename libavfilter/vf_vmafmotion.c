@@ -24,7 +24,6 @@
  * Calculate VMAF Motion score.
  */
 
-#include "libavutil/file_open.h"
 #include "libavutil/opt.h"
 #include "libavutil/pixdesc.h"
 #include "avfilter.h"

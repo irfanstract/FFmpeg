@@ -38,7 +38,6 @@
 #include "avcodec.h"
 #include "codec_internal.h"
 #include "dv.h"
-#include "dv_internal.h"
 #include "dv_profile_internal.h"
 #include "dv_tablegen.h"
 #include "encode.h"
@@ -48,40 +47,13 @@
 #include "pixblockdsp.h"
 #include "put_bits.h"
 
-typedef struct DVEncContext {
-    const AVClass     *class;
-    const AVDVProfile *sys;
-    const AVFrame     *frame;
-    AVCodecContext    *avctx;
-    uint8_t           *buf;
-
-    void (*get_pixels)(int16_t *block, const uint8_t *pixels, ptrdiff_t linesize);
-    void (*fdct[2])(int16_t *block);
-
-    me_cmp_func  ildct_cmp;
-    DVwork_chunk work_chunks[4 * 12 * 27];
-
-    int quant_deadzone;
-} DVEncContext;
-
-
 static av_cold int dvvideo_encode_init(AVCodecContext *avctx)
 {
-    DVEncContext *s = avctx->priv_data;
+    DVVideoContext *s = avctx->priv_data;
     FDCTDSPContext fdsp;
     MECmpContext mecc;
     PixblockDSPContext pdsp;
     int ret;
-
-    s->avctx = avctx;
-
-    if (avctx->chroma_sample_location != AVCHROMA_LOC_TOPLEFT) {
-        const char *name = av_chroma_location_name(avctx->chroma_sample_location);
-        av_log(avctx, AV_LOG_WARNING, "Only top-left chroma location is supported "
-               "in DV, input value is: %s\n", name ? name : "unknown");
-        if (avctx->strict_std_compliance > FF_COMPLIANCE_NORMAL)
-            return AVERROR(EINVAL);
-    }
 
     s->sys = av_dv_codec_profile2(avctx->width, avctx->height, avctx->pix_fmt, avctx->time_base);
     if (!s->sys) {
@@ -92,7 +64,7 @@ static av_cold int dvvideo_encode_init(AVCodecContext *avctx)
         return AVERROR(EINVAL);
     }
 
-    ret = ff_dv_init_dynamic_tables(s->work_chunks, s->sys);
+    ret = ff_dv_init_dynamic_tables(s, s->sys);
     if (ret < 0) {
         av_log(avctx, AV_LOG_ERROR, "Error initializing work tables.\n");
         return ret;
@@ -104,7 +76,9 @@ static av_cold int dvvideo_encode_init(AVCodecContext *avctx)
     ff_fdctdsp_init(&fdsp, avctx);
     ff_me_cmp_init(&mecc, avctx);
     ff_pixblockdsp_init(&pdsp, avctx);
-    ff_set_cmp(&mecc, mecc.ildct_cmp, avctx->ildct_cmp);
+    ret = ff_set_cmp(&mecc, mecc.ildct_cmp, avctx->ildct_cmp);
+    if (ret < 0)
+        return AVERROR(EINVAL);
 
     s->get_pixels = pdsp.get_pixels;
     s->ildct_cmp  = mecc.ildct_cmp[5];
@@ -119,7 +93,7 @@ static av_cold int dvvideo_encode_init(AVCodecContext *avctx)
     }
 #endif
 
-    return 0;
+    return ff_dvvideo_init(avctx);
 }
 
 /* bit budget for AC only in 5 MBs */
@@ -245,7 +219,7 @@ static av_always_inline PutBitContext *dv_encode_ac(EncBlockInfo *bi,
     return pb;
 }
 
-static av_always_inline int dv_guess_dct_mode(DVEncContext *s, const uint8_t *data,
+static av_always_inline int dv_guess_dct_mode(DVVideoContext *s, uint8_t *data,
                                               ptrdiff_t linesize)
 {
     if (s->avctx->flags & AV_CODEC_FLAG_INTERLACED_DCT) {
@@ -393,7 +367,7 @@ static const int dv_weight_720[2][64] = {
       2661, 2583, 2509, 2394, 2509, 2260, 2260, 2131, }
 };
 
-static av_always_inline int dv_set_class_number_sd(DVEncContext *s,
+static av_always_inline int dv_set_class_number_sd(DVVideoContext *s,
                                                    int16_t *blk, EncBlockInfo *bi,
                                                    const uint8_t *zigzag_scan,
                                                    const int *weight, int bias)
@@ -477,7 +451,7 @@ static av_always_inline int dv_set_class_number_sd(DVEncContext *s,
 
 /* this function just copies the DCT coefficients and performs
    the initial (non-)quantization. */
-static inline void dv_set_class_number_hd(DVEncContext *s,
+static inline void dv_set_class_number_hd(DVVideoContext *s,
                                           int16_t *blk, EncBlockInfo *bi,
                                           const uint8_t *zigzag_scan,
                                           const int *weight, int bias)
@@ -534,8 +508,8 @@ static inline void dv_set_class_number_hd(DVEncContext *s,
     bi->cno = 0;
 }
 
-static av_always_inline int dv_init_enc_block(EncBlockInfo* bi, const uint8_t *data, int linesize,
-                                              DVEncContext *s, int chroma)
+static av_always_inline int dv_init_enc_block(EncBlockInfo* bi, uint8_t *data, int linesize,
+                                              DVVideoContext *s, int chroma)
 {
     LOCAL_ALIGNED_16(int16_t, blk, [64]);
 
@@ -872,12 +846,12 @@ static inline void dv_revise_cnos(uint8_t *dif, EncBlockInfo *blk, const AVDVPro
 
 static int dv_encode_video_segment(AVCodecContext *avctx, void *arg)
 {
-    DVEncContext *s = avctx->priv_data;
+    DVVideoContext *s = avctx->priv_data;
     DVwork_chunk *work_chunk = arg;
     int mb_index, i, j;
     int mb_x, mb_y, c_offset;
     ptrdiff_t linesize, y_stride;
-    const uint8_t *y_ptr;
+    uint8_t *y_ptr;
     uint8_t *dif, *p;
     LOCAL_ALIGNED_8(uint8_t, scratch, [128]);
     EncBlockInfo enc_blks[5 * DV_MAX_BPM];
@@ -891,7 +865,7 @@ static int dv_encode_video_segment(AVCodecContext *avctx, void *arg)
     p = dif = &s->buf[work_chunk->buf_offset * 80];
     enc_blk = &enc_blks[0];
     for (mb_index = 0; mb_index < 5; mb_index++) {
-        dv_calculate_mb_xy(s->sys, s->buf, work_chunk, mb_index, &mb_x, &mb_y);
+        dv_calculate_mb_xy(s, work_chunk, mb_index, &mb_x, &mb_y);
 
         qnos[mb_index] = DV_PROFILE_IS_HD(s->sys) ? 1 : 15;
 
@@ -936,13 +910,14 @@ static int dv_encode_video_segment(AVCodecContext *avctx, void *arg)
         c_offset = ((mb_y >>  (s->sys->pix_fmt == AV_PIX_FMT_YUV420P)) * s->frame->linesize[1] +
                     (mb_x >> ((s->sys->pix_fmt == AV_PIX_FMT_YUV411P) ? 2 : 1))) * 8;
         for (j = 2; j; j--) {
-            const uint8_t *c_ptr = s->frame->data[j] + c_offset;
+            uint8_t *c_ptr = s->frame->data[j] + c_offset;
             linesize = s->frame->linesize[j];
             y_stride = (mb_y == 134) ? 8 : (s->frame->linesize[j] * (1 << (3*!enc_blk->dct_mode)));
             if (s->sys->pix_fmt == AV_PIX_FMT_YUV411P && mb_x >= (704 / 8)) {
+                uint8_t *d;
                 uint8_t *b = scratch;
                 for (i = 0; i < 8; i++) {
-                    const uint8_t *d = c_ptr + linesize * 8;
+                    d      = c_ptr + linesize * 8;
                     b[0]   = c_ptr[0];
                     b[1]   = c_ptr[1];
                     b[2]   = c_ptr[2];
@@ -1020,7 +995,7 @@ static int dv_encode_video_segment(AVCodecContext *avctx, void *arg)
     return 0;
 }
 
-static inline int dv_write_pack(enum DVPackType pack_id, DVEncContext *c,
+static inline int dv_write_pack(enum dv_pack_type pack_id, DVVideoContext *c,
                                 uint8_t *buf)
 {
     /*
@@ -1058,8 +1033,8 @@ static inline int dv_write_pack(enum DVPackType pack_id, DVEncContext *c,
 
     buf[0] = (uint8_t) pack_id;
     switch (pack_id) {
-    case DV_HEADER525: /* I can't imagine why these two weren't defined as real */
-    case DV_HEADER625: /* packs in SMPTE314M -- they definitely look like ones */
+    case dv_header525: /* I can't imagine why these two weren't defined as real */
+    case dv_header625: /* packs in SMPTE314M -- they definitely look like ones */
         buf[1] =  0xf8       | /* reserved -- always 1 */
                  (apt & 0x07); /* APT: Track application ID */
         buf[2] = (0    << 7) | /* TF1: audio data is 0 - valid; 1 - invalid */
@@ -1072,7 +1047,7 @@ static inline int dv_write_pack(enum DVPackType pack_id, DVEncContext *c,
                  (0x0f << 3) | /* reserved -- always 1 */
                  (apt & 0x07); /* AP3: Subcode application ID */
         break;
-    case DV_VIDEO_SOURCE:
+    case dv_video_source:
         buf[1] = 0xff;         /* reserved -- always 1 */
         buf[2] = (1 << 7) |    /* B/W: 0 - b/w, 1 - color */
                  (1 << 6) |    /* following CLF is valid - 0, invalid - 1 */
@@ -1083,7 +1058,7 @@ static inline int dv_write_pack(enum DVPackType pack_id, DVEncContext *c,
                  c->sys->video_stype; /* signal type video compression */
         buf[4] = 0xff;         /* VISC: 0xff -- no information */
         break;
-    case DV_VIDEO_CONTROL:
+    case dv_video_control:
         buf[1] = (0 << 6) |    /* Copy generation management (CGMS) 0 -- free */
                  0x3f;         /* reserved -- always 1 */
         buf[2] = 0xc8 |        /* reserved -- always b11001xxx */
@@ -1104,7 +1079,7 @@ static inline int dv_write_pack(enum DVPackType pack_id, DVEncContext *c,
     return 5;
 }
 
-static inline int dv_write_dif_id(enum DVSectionType t, uint8_t chan_num,
+static inline int dv_write_dif_id(enum dv_section_type t, uint8_t chan_num,
                                   uint8_t seq_num, uint8_t dif_num,
                                   uint8_t *buf)
 {
@@ -1140,25 +1115,25 @@ static inline int dv_write_ssyb_id(uint8_t syb_num, uint8_t fr, uint8_t *buf)
     return 3;
 }
 
-static void dv_format_frame(DVEncContext *c, uint8_t *buf)
+static void dv_format_frame(DVVideoContext *c, uint8_t *buf)
 {
     int chan, i, j, k;
     /* We work with 720p frames split in half. The odd half-frame is chan 2,3 */
-    int chan_offset = 2*(c->sys->height == 720 && c->avctx->frame_num & 1);
+    int chan_offset = 2*(c->sys->height == 720 && c->avctx->frame_number & 1);
 
     for (chan = 0; chan < c->sys->n_difchan; chan++) {
         for (i = 0; i < c->sys->difseg_size; i++) {
             memset(buf, 0xff, 80 * 6); /* first 6 DIF blocks are for control data */
 
             /* DV header: 1DIF */
-            buf += dv_write_dif_id(DV_SECT_HEADER, chan+chan_offset, i, 0, buf);
-            buf += dv_write_pack((c->sys->dsf ? DV_HEADER625 : DV_HEADER525),
+            buf += dv_write_dif_id(dv_sect_header, chan+chan_offset, i, 0, buf);
+            buf += dv_write_pack((c->sys->dsf ? dv_header625 : dv_header525),
                                  c, buf);
             buf += 72; /* unused bytes */
 
             /* DV subcode: 2DIFs */
             for (j = 0; j < 2; j++) {
-                buf += dv_write_dif_id(DV_SECT_SUBCODE, chan+chan_offset, i, j, buf);
+                buf += dv_write_dif_id(dv_sect_subcode, chan+chan_offset, i, j, buf);
                 for (k = 0; k < 6; k++)
                     buf += dv_write_ssyb_id(k, (i < c->sys->difseg_size / 2), buf) + 5;
                 buf += 29; /* unused bytes */
@@ -1166,12 +1141,12 @@ static void dv_format_frame(DVEncContext *c, uint8_t *buf)
 
             /* DV VAUX: 3DIFS */
             for (j = 0; j < 3; j++) {
-                buf += dv_write_dif_id(DV_SECT_VAUX, chan+chan_offset, i, j, buf);
-                buf += dv_write_pack(DV_VIDEO_SOURCE,  c, buf);
-                buf += dv_write_pack(DV_VIDEO_CONTROL, c, buf);
+                buf += dv_write_dif_id(dv_sect_vaux, chan+chan_offset, i, j, buf);
+                buf += dv_write_pack(dv_video_source,  c, buf);
+                buf += dv_write_pack(dv_video_control, c, buf);
                 buf += 7 * 5;
-                buf += dv_write_pack(DV_VIDEO_SOURCE,  c, buf);
-                buf += dv_write_pack(DV_VIDEO_CONTROL, c, buf);
+                buf += dv_write_pack(dv_video_source,  c, buf);
+                buf += dv_write_pack(dv_video_control, c, buf);
                 buf += 4 * 5 + 2; /* unused bytes */
             }
 
@@ -1179,10 +1154,10 @@ static void dv_format_frame(DVEncContext *c, uint8_t *buf)
             for (j = 0; j < 135; j++) {
                 if (j % 15 == 0) {
                     memset(buf, 0xff, 80);
-                    buf += dv_write_dif_id(DV_SECT_AUDIO, chan+chan_offset, i, j/15, buf);
+                    buf += dv_write_dif_id(dv_sect_audio, chan+chan_offset, i, j/15, buf);
                     buf += 77; /* audio control & shuffled PCM audio */
                 }
-                buf += dv_write_dif_id(DV_SECT_VIDEO, chan+chan_offset, i, j, buf);
+                buf += dv_write_dif_id(dv_sect_video, chan+chan_offset, i, j, buf);
                 buf += 77; /* 1 video macroblock: 1 bytes control
                             * 4 * 14 bytes Y 8x8 data
                             * 10 bytes Cr 8x8 data
@@ -1195,7 +1170,7 @@ static void dv_format_frame(DVEncContext *c, uint8_t *buf)
 static int dvvideo_encode_frame(AVCodecContext *c, AVPacket *pkt,
                                 const AVFrame *frame, int *got_packet)
 {
-    DVEncContext *s = c->priv_data;
+    DVVideoContext *s = c->priv_data;
     int ret;
 
     if ((ret = ff_get_encode_buffer(c, pkt, s->sys->frame_size, 0)) < 0)
@@ -1220,7 +1195,7 @@ static int dvvideo_encode_frame(AVCodecContext *c, AVPacket *pkt,
 }
 
 #define VE AV_OPT_FLAG_VIDEO_PARAM | AV_OPT_FLAG_ENCODING_PARAM
-#define OFFSET(x) offsetof(DVEncContext, x)
+#define OFFSET(x) offsetof(DVVideoContext, x)
 static const AVOption dv_options[] = {
     { "quant_deadzone",        "Quantizer dead zone",    OFFSET(quant_deadzone),       AV_OPT_TYPE_INT, { .i64 = 7 }, 0, 1024, VE },
     { NULL },
@@ -1235,13 +1210,12 @@ static const AVClass dvvideo_encode_class = {
 
 const FFCodec ff_dvvideo_encoder = {
     .p.name         = "dvvideo",
-    CODEC_LONG_NAME("DV (Digital Video)"),
+    .p.long_name    = NULL_IF_CONFIG_SMALL("DV (Digital Video)"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_DVVIDEO,
     .p.capabilities = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_FRAME_THREADS |
-                      AV_CODEC_CAP_SLICE_THREADS                    |
-                      AV_CODEC_CAP_ENCODER_REORDERED_OPAQUE,
-    .priv_data_size = sizeof(DVEncContext),
+                      AV_CODEC_CAP_SLICE_THREADS,
+    .priv_data_size = sizeof(DVVideoContext),
     .init           = dvvideo_encode_init,
     FF_CODEC_ENCODE_CB(dvvideo_encode_frame),
     .p.pix_fmts     = (const enum AVPixelFormat[]) {
@@ -1249,4 +1223,5 @@ const FFCodec ff_dvvideo_encoder = {
         AV_PIX_FMT_YUV420P, AV_PIX_FMT_NONE
     },
     .p.priv_class   = &dvvideo_encode_class,
+    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE,
 };
