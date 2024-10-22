@@ -43,15 +43,43 @@
 #define HAVE_TRUNC          1
 #define HAVE_TRUNCF             1
 
-
-
-
-
-
+/* done two times, both before and after,  */
+#define HAVE_SYS_RESOURCE_H 0
 
 // #include_next "config.h"
+#include "config-al.h"
+#define HAVE_SYS_RESOURCE_H 0
+#define HAVE_WINDOWS_H 0
+#define HAVE_GETMODULEHANDLE 0
+#define HAVE_SETDLLDIRECTORY 0
+#define HAVE_GETPROCESSAFFINITYMASK 0
+#define HAVE_GETPROCESSMEMORYINFO 0
+#define HAVE_GETPROCESSTIMES 0
+#define HAVE_IO_H 0
+#define HAVE_WINSOCK2_H 0
+#undef _WIN32
+#define HAVE_GETPROCESSTIMES 0
+#define HAVE_GETPROCESSMEMORYINFO 0
+#define HAVE_SETCONSOLECTRLHANDLER 0
+#define HAVE_KBHIT 0
+#define HAVE_NANOSLEEP 0
+#define HAVE_BCRYPT 0
+
+
+
+
+
+
 
 #include "cpolyfill.h"
+
+
+
+
+
+
+
+
 
 eoeeeoooeeeooeeeeooo_t eoeeeoooeeeooeeeeooo_m(void) ;
 
