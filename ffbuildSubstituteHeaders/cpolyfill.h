@@ -70,6 +70,9 @@ typedef int eoeeeoooeeeooeeeeooo_t ;
 #define __CRTDECL __cdecl
 #endif
 
+/* temporary */
+#include <stdlib.h>
+
 // #include <io.h>
 
 #include <time.h>
@@ -89,6 +92,9 @@ typedef int eoeeeoooeeeooeeeeooo_t ;
   };
 #endif
 
+/* temporary */
+#include <stdio.h>
+
 
 // write() ;
 
@@ -104,15 +110,15 @@ typedef int eoeeeoooeeeooeeeeooo_t ;
   long __cdecl filelength(int _FileHandle) /* __MINGW_ATTRIB_DEPRECATED_MSVC2005 */;
   int __cdecl isatty(int _FileHandle) /* __MINGW_ATTRIB_DEPRECATED_MSVC2005 */;
   int __cdecl locking(int _FileHandle,int _LockMode,long _NumOfBytes) /* __MINGW_ATTRIB_DEPRECATED_MSVC2005 */;
-  long __cdecl lseek(int _FileHandle,long _Offset,int _Origin) /* __MINGW_ATTRIB_DEPRECATED_MSVC2005 */;
+  off_t __cdecl lseek(int _FileHandle,off_t _Offset,int _Origin) /* __MINGW_ATTRIB_DEPRECATED_MSVC2005 */;
   char *__cdecl mktemp(char *_TemplateName)  /* __MINGW_ATTRIB_DEPRECATED_MSVC2005 */;
   int __cdecl open(const char *_Filename,int _OpenFlag,...)  /* __MINGW_ATTRIB_DEPRECATED_MSVC2005 */;
-  int __cdecl read(int _FileHandle,void *_DstBuf,unsigned int _MaxCharCount)  /* __MINGW_ATTRIB_DEPRECATED_MSVC2005 */;
+  ssize_t __cdecl read(int _FileHandle,void *_DstBuf,size_t _MaxCharCount)  /* __MINGW_ATTRIB_DEPRECATED_MSVC2005 */;
   int __cdecl setmode(int _FileHandle,int _Mode) /* __MINGW_ATTRIB_DEPRECATED_MSVC2005 */;
   int __cdecl sopen(const char *_Filename,int _OpenFlag,int _ShareFlag,...) /* __MINGW_ATTRIB_DEPRECATED_MSVC2005 */;
   long __cdecl tell(int _FileHandle) /* __MINGW_ATTRIB_DEPRECATED_MSVC2005 */;
 //   int __cdecl umask(int _Mode) /* __MINGW_ATTRIB_DEPRECATED_MSVC2005 */;
-  int __cdecl write(int _Filehandle,const void *_Buf,unsigned int _MaxCharCount) /* __MINGW_ATTRIB_DEPRECATED_MSVC2005 */;
+  ssize_t __cdecl write(int _Filehandle,const void *_Buf,size_t _MaxCharCount) /* __MINGW_ATTRIB_DEPRECATED_MSVC2005 */;
 #endif
 
 /*  https://stackoverflow.com/questions/15458393/implicit-declaration-of-function-time-wimplicit-function-declaration -- https://stackoverflow.com/a/73531219 */
