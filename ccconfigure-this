@@ -29,6 +29,8 @@ FLAGS=(
   # --disable-debug               # disable debug mode
   --disable-runtime-cpudetect   # disable cpu detection
   --disable-autodetect          # disable env auto detect
+  --disable-w32threads          # disable usages of W32 threads
+  --disable-os2threads          # disable usages of DOS threads
 
   # --nm="llvm-nm -g"
   # --ar=emar
