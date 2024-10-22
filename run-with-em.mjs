@@ -276,6 +276,7 @@ execFileSync("J:\\Dev\\emsdk\\upstream\\emscripten\\emcc.bat", [
         ]
       ) ,
       "-DHAVE_AV_CONFIG_H",
+      "-sUSE_SDL=2",
     ]
   ) ,
 
