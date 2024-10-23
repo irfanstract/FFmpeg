@@ -64,6 +64,9 @@
 #define HAVE_KBHIT 0
 #define HAVE_NANOSLEEP 0
 #define HAVE_BCRYPT 0
+/* we can't exclude 'file.c' from bundle because it's in use */
+#define HAVE_MMAP 0
+#define HAVE_MAPVIEWOFFILE 0
 
 
 
