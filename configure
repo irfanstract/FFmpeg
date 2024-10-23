@@ -4238,9 +4238,17 @@ enable_weak $HWACCEL_AUTODETECT_LIBRARY_LIST
 
 disabled logging && logfile=/dev/null
 
+ifnosilentpleaseecho() {
+    if test "$quiet" != "yes"; then
+        echo "$1"
+    fi
+}
+
 # command line configuration sanity checks
+ifnosilentpleaseecho "🎹 command line configuration sanity checks"
 
 # we need to build at least one lib type
+ifnosilentpleaseecho "🎹 we need to build at least one lib type"
 if ! enabled_any static shared; then
     cat <<EOF
 At least one library type must be built.
@@ -4515,6 +4523,8 @@ tmpfile(){
     eval $1=$tmp
 }
 
+ifnosilentpleaseecho "🎹 making sure we create and delete relevant dir(s) at relevant times"
+
 trap 'rm -rf -- "$FFTMPDIR"' EXIT
 trap 'exit 2' INT
 
@@ -4535,6 +4545,7 @@ unset -f mktemp
 chmod +x $TMPE
 
 # make sure we can execute files in $TMPDIR
+ifnosilentpleaseecho "🎹 make sure we can execute files in $TMPDIR (tmpdir) "
 cat > $TMPSH 2>> $logfile <<EOF
 #! /bin/sh
 EOF
@@ -4685,6 +4696,7 @@ probe_cc(){
     pfx=$1
     _cc=$2
     first=$3
+    echo "'probe_cc' for $1, $2"
 
     unset _type _ident _cc_c _cc_e _cc_o _flags _cflags
     unset _ld_o _ldflags _ld_lib _ld_path
@@ -4871,6 +4883,8 @@ set_ccvars(){
     fi
 }
 
+ifnosilentpleaseecho "🎹 running 'probe_cc' for Main CC"
+
 probe_cc cc "$cc" "true"
 cflags_filter=$_flags_filter
 cflags_speed=$_cflags_speed
@@ -4880,6 +4894,8 @@ add_cflags $_flags $_cflags
 cc_ldflags=$_ldflags
 set_ccvars CC
 set_ccvars CXX
+
+ifnosilentpleaseecho "🎹 running 'probe_cc' for Host CC"
 
 probe_cc hostcc "$host_cc"
 host_cflags_filter=$_flags_filter
@@ -4897,15 +4913,21 @@ test -n "$cc_type" && enable $cc_type ||
 : ${host_ld_default:=$host_cc}
 set_default ar as objcc dep_cc ld ln_s host_ld windres
 
+ifnosilentpleaseecho "🎹 running 'probe_cc' for AS"
+
 probe_cc as "$as"
 asflags_filter=$_flags_filter
 add_asflags $_flags $_cflags
 set_ccvars AS
 
+ifnosilentpleaseecho "🎹 running 'probe_cc' for Obj-C"
+
 probe_cc objcc "$objcc"
 objcflags_filter=$_flags_filter
 add_objcflags $_flags $_cflags
 set_ccvars OBJC
+
+ifnosilentpleaseecho "🎹 running 'probe_cc' for LD"
 
 probe_cc ld "$ld"
 ldflags_filter=$_flags_filter
@@ -4914,6 +4936,8 @@ test "$cc_type" != "$ld_type" && add_ldflags $cc_ldflags
 LD_O=${_ld_o-$LD_O}
 LD_LIB=${_ld_lib-$LD_LIB}
 LD_PATH=${_ld_path-$LD_PATH}
+
+ifnosilentpleaseecho "🎹 running 'probe_cc' for Host LD"
 
 probe_cc hostld "$host_ld"
 host_ldflags_filter=$_flags_filter
@@ -5039,6 +5063,7 @@ is_in $arch $ARCH_LIST || warn "unknown architecture $arch"
 enable $arch
 
 # Add processor-specific flags
+ifnosilentpleaseecho "🎹 identifying processor-specific flags"
 if enabled aarch64; then
 
     case $cpu in
@@ -5368,6 +5393,7 @@ if [ "$cpu" != generic ]; then
 fi
 
 # compiler sanity check
+ifnosilentpleaseecho "🎹 compiler sanity check"
 test_exec <<EOF
 int main(void){ return 0; }
 EOF
@@ -5453,6 +5479,7 @@ case "$arch" in
 esac
 
 # OS specific
+ifnosilentpleaseecho "🎹 OS-specific chores ($target_os)"
 case $target_os in
     aix)
         SHFLAGS=-shared
@@ -5714,6 +5741,7 @@ case $target_os in
 esac
 
 # test if creating links works
+ifnosilentpleaseecho "🎹 test if creating symlinks works"
 link_dest=$(mktemp -u $TMPDIR/dest_XXXXXXXX)
 link_name=$(mktemp -u $TMPDIR/name_XXXXXXXX)
 mkdir "$link_dest"
@@ -5734,6 +5762,8 @@ rm -r "$link_dest"
 rm -r "$link_name"
 
 # determine libc flavour
+
+ifnosilentpleaseecho "🎹 determining libc flavour"
 
 probe_libc(){
     pfx=$1
@@ -5842,6 +5872,8 @@ probe_libc host_
 
 # hacks for compiler/libc/os combinations
 
+ifnosilentpleaseecho "🎹 hacks for compiler/libc/os combinations"
+
 case $libc_type in
     bionic)
         add_compat strtod.o strtod=avpriv_strtod
@@ -5893,6 +5925,7 @@ done
 check_cc pragma_deprecated "" '_Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")'
 
 # The global variable ensures the bits appear unchanged in the object file.
+ifnosilentpleaseecho "🎹 This global variable ensures the bits appear unchanged in the object file."
 test_cc <<EOF || die "endian test failed"
 unsigned int endian = 'B' << 24 | 'I' << 16 | 'G' << 8 | 'E';
 EOF
@@ -5903,6 +5936,8 @@ check_cc const_nan math.h "struct { double d; } static const bar[] = { { NAN } }
 if ! enabled ppc64 || enabled bigendian; then
     disable vsx
 fi
+
+ifnosilentpleaseecho "🎹 arch-specific ASM-er compile checks ($as_type, $as )"
 
 check_gas() {
     log "check_gas using '$as' as AS"
@@ -6174,6 +6209,10 @@ check_cc intrinsics_neon arm_neon.h "int16x8_t test = vdupq_n_s16(0)"
 check_ldflags -Wl,--as-needed
 check_ldflags -Wl,-z,noexecstack
 
+ifnosilentpleaseecho "🎹 some stdlib H-or-LD checks"
+
+ifnosilentpleaseecho "- POSIX"
+
 if ! disabled network; then
     check_func getaddrinfo $network_extralibs
     check_func inet_aton $network_extralibs
@@ -6259,6 +6298,8 @@ check_func  sysconf
 check_func  sysctl
 check_func  usleep
 
+ifnosilentpleaseecho "- WIN32"
+
 check_func_headers conio.h kbhit
 check_func_headers io.h setmode
 check_func_headers lzo/lzo1x.h lzo1x_999_compress
@@ -6305,6 +6346,8 @@ check_headers io.h
 enabled libdrm &&
     check_headers linux/dma-buf.h
 
+ifnosilentpleaseecho "- Sys"
+
 check_headers linux/perf_event.h
 check_headers libcrystalhd/libcrystalhd_if.h
 check_headers malloc.h
@@ -6345,6 +6388,8 @@ check_lib psapi    "windows.h psapi.h"    GetProcessMemoryInfo -lpsapi
 check_lib android android/native_window.h ANativeWindow_acquire -landroid
 check_lib mediandk "stdint.h media/NdkImage.h" AImage_delete -lmediandk
 check_lib camera2ndk "stdbool.h stdint.h camera/NdkCameraManager.h" ACameraManager_create -lcamera2ndk
+
+ifnosilentpleaseecho "- Apple"
 
 enabled appkit       && check_apple_framework AppKit
 enabled audiotoolbox && check_apple_framework AudioToolbox
@@ -6387,6 +6432,8 @@ enabled videotoolbox && {
 enabled metal && test_cmd $metalcc -v || disable metal
 
 check_struct "sys/time.h sys/resource.h" "struct rusage" ru_maxrss
+
+ifnosilentpleaseecho "- DX"
 
 check_type "windows.h dxva.h" "DXVA_PicParams_AV1" -DWINAPI_FAMILY=WINAPI_FAMILY_DESKTOP_APP -D_CRT_BUILD_DESKTOP_APP=0
 check_type "windows.h dxva.h" "DXVA_PicParams_HEVC" -DWINAPI_FAMILY=WINAPI_FAMILY_DESKTOP_APP -D_CRT_BUILD_DESKTOP_APP=0
@@ -6431,7 +6478,11 @@ if enabled_all libglslang libshaderc; then
     die "ERROR: libshaderc and libglslang are mutually exclusive, if in doubt, disable libglslang"
 fi
 
+ifnosilentpleaseecho "- Win32"
+
 check_cpp_condition winrt windows.h "!WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)"
+
+ifnosilentpleaseecho "- Threads"
 
 if ! disabled w32threads && ! enabled pthreads; then
     check_func_headers "windows.h process.h" _beginthreadex &&
@@ -6473,6 +6524,8 @@ if ! disabled pthreads && ! enabled w32threads && ! enabled os2threads; then
     fi
 fi
 
+ifnosilentpleaseecho "- Z && GZ"
+
 enabled  zlib && { check_pkg_config zlib zlib "zlib.h" zlibVersion ||
                    check_lib zlib   zlib.h      zlibVersion    -lz; }
 enabled bzlib && check_lib bzlib bzlib.h BZ2_bzlibVersion    -lbz2
@@ -6491,7 +6544,10 @@ EOF
 enabled zlib_gzip && enabled gzip || disable ptx_compression
 
 # On some systems dynamic loading requires no extra linker flags
+ifnosilentpleaseecho "🎹 On some systems dynamic loading requires no extra linker flags"
 check_lib libdl dlfcn.h "dlopen dlsym" || check_lib libdl dlfcn.h "dlopen dlsym" -ldl
+
+ifnosilentpleaseecho "🎹 Some Math Lib Checks"
 
 check_lib libm math.h sin -lm
 
@@ -6510,6 +6566,11 @@ for func in $COMPLEX_FUNCS; do
 done
 
 # these are off by default, so fail if requested and not available
+
+ifnosilentpleaseecho "🎹 these are off by default, so fail if requested and not available"
+
+ifnosilentpleaseecho "- if enabled given lib then needto be able to find relevant '.h's"
+
 enabled avisynth          && { require_headers "avisynth/avisynth_c.h avisynth/avs/version.h" &&
                                { test_cpp_condition avisynth/avs/version.h "AVS_MAJOR_VER >= 3 && AVS_MINOR_VER >= 7 && AVS_BUGFIX_VER >= 1 || AVS_MAJOR_VER >= 3 && AVS_MINOR_VER > 7 || AVS_MAJOR_VER > 3" ||
                                  die "ERROR: AviSynth+ header version must be >= 3.7.1"; } }
@@ -6790,6 +6851,7 @@ enabled schannel &&
     schannel_extralibs="-lsecur32" ||
         disable schannel
 
+ifnosilentpleaseecho "- texinfo"
 makeinfo --version > /dev/null 2>&1 && enable makeinfo  || disable makeinfo
 enabled makeinfo \
     && [ 0$(makeinfo --version | grep "texinfo" | sed 's/.*texinfo[^0-9]*\([0-9]*\)\..*/\1/') -ge 5 ] \
@@ -6801,6 +6863,7 @@ rsync --help 2> /dev/null | grep -q 'contimeout' && enable rsync_contimeout || d
 xmllint --version  > /dev/null 2>&1 && enable xmllint   || disable xmllint
 
 # check V4L2 codecs available in the API
+ifnosilentpleaseecho "- check V4L2 codecs available in the API"
 if enabled v4l2_m2m; then
     check_headers linux/fb.h
     check_headers linux/videodev2.h
@@ -7003,6 +7066,8 @@ fi
 enabled debug && add_cflags -g"$debuglevel" && add_asflags -g"$debuglevel"
 
 # add some useful compiler flags if supported
+ifnosilentpleaseecho "🎹 add some useful compiler flags if supported"
+
 check_cflags -Wdeclaration-after-statement
 check_cflags -Wall
 check_cflags -Wdisabled-optimization
@@ -7293,6 +7358,7 @@ enable frame_thread_encoder
 # these filters depend on removed avcodec APIs
 # they are kept disabled for now, but will be removed if
 # nobody updates and re-enables them
+ifnosilentpleaseecho "🎹 these filters depend on removed avcodec APIs"
 disable mcdeint_filter
 disable uspp_filter
 
@@ -7392,6 +7458,7 @@ if disabled stdatomic; then
 fi
 
 # Check if requested libraries were found.
+ifnosilentpleaseecho "🎹 Check if requested libraries were found."
 for lib in $AUTODETECT_LIBS; do
     requested $lib && ! enabled $lib && die "ERROR: $lib requested but not found";
 done
@@ -7399,6 +7466,7 @@ done
 enabled zlib && add_cppflags -DZLIB_CONST
 
 # conditional library dependencies, in any order
+ifnosilentpleaseecho "🎹 conditional library dependencies, in any order"
 enabled amovie_filter       && prepend avfilter_deps "avformat avcodec"
 enabled aresample_filter    && prepend avfilter_deps "swresample"
 enabled bm3d_filter         && prepend avfilter_deps "avcodec"
