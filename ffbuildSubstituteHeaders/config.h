@@ -55,6 +55,7 @@
 #define HAVE_GETPROCESSAFFINITYMASK 0
 #define HAVE_GETPROCESSMEMORYINFO 0
 #define HAVE_GETPROCESSTIMES 0
+#define HAVE_WGLGETPROCADDRESS 0
 #define HAVE_IO_H 0
 #define HAVE_WINSOCK2_H 0
 #undef _WIN32
@@ -67,6 +68,7 @@
 /* we can't exclude 'file.c' from bundle because it's in use */
 #define HAVE_MMAP 0
 #define HAVE_MAPVIEWOFFILE 0
+#define HAVE_VIRTUALALLOC 0
 
 
 
