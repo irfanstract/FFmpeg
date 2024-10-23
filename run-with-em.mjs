@@ -25,6 +25,8 @@ const files = (
   (/** @type {readonly String[] } */ ([
     ...(
       [
+        // "libavutil/time.c",
+        // "libavutil/parseutils.c",
         "fftools/opt_common.c",
         "fftools/ffprobe.c",
         "fftools/ffplay.c",
@@ -246,6 +248,17 @@ execFileSync("J:\\Dev\\emsdk\\upstream\\emscripten\\emcc.bat", [
       "-fno-math-errno",
       "-fno-signed-zeros",
       "-fno-tree-vectorize",
+      ...(
+        `-Wno-parentheses -Wno-switch -Wno-format-zero-length -Wno-pointer-sign -Wno-unused-const-variable -Wno-bool-operation -Wno-char-subscripts -Wno-macro-redefined`
+        .match(/\S+/g )
+        ?? (() => { throw new Error ; })()
+      ) ,
+      /* temporary treatment, to save space to allow us quickly reach the actial "error" items */
+      "-Wno-ignored-attributes",
+      // "-H",
+      // "-print-search-dirs",
+      "-dI",
+      "-fshow-skipped-includes",
     ]
   ) ,
 
