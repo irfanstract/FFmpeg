@@ -17,31 +17,50 @@
 
 
 
-# verify Emscripten version
-emcc -v
+if test "0" = 1; then
+  # verify Emscripten version
+  emcc -v
+fi
 
 # configure FFMpeg with Emscripten
 CFLAGS="-s USE_PTHREADS"  # a dependency 
-FLAGS=(
+flags=(
   --target-os=none        # use none to prevent any os specific configurations
   --enable-cross-compile  # enable cross compile
   --disable-stripping     # disable stripping
   --arch=x86_32           # use x86_32 to achieve minimal architectural optimization
-  --disable-x86asm        # disable x86 asm
-  --disable-inline-asm    # disable inline asm
-  --nm="llvm-nm -g"
+  # --disable-x86asm        # disable x86 asm
+  --disable-asm           # disable asm
+  # --disable-inline-asm    # disable inline asm
+  --disable-programs            # disable ffmpeg, ffprobe and ffplay build
+  # --disable-doc                 # disable doc build
+  # --disable-debug               # disable debug mode
+  --disable-runtime-cpudetect   # disable cpu detection
+  --disable-autodetect          # disable env auto detect
+
+  # assign toolchains and extra flags
+  --nm=emnm
   --ar=emar
-  --as=llvm-as
-  --ranlib=llvm-ranlib
+  --ranlib=emranlib
   --cc=emcc
   --cxx=em++
   --objcc=emcc
   --dep-cc=emcc
+  --extra-cflags="$CFLAGS"
+  --extra-cxxflags="$CXXFLAGS"
+
+  # disable thread when FFMPEG_ST is NOT defined
+  ${FFMPEG_ST:+ --disable-pthreads --disable-w32threads --disable-os2threads}
 )
 LDFLAGS="$CFLAGS -s INITIAL_MEMORY=33554432" # 33554432 bytes = 32 MB
 
 # now direct to the main thing
-emconfigure ./configure "${FLAGS[@]}"
+x_configureshfile="$(dirname -- "${BASH_SOURCE[0]}" )/configure"
+if test "0" = 1; then
+  emconfigure "$x_configureshfile" "${flags[@]}"
+else
+  $x_configureshfile "${flags[@]}"
+fi
 
 
 
