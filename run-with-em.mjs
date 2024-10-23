@@ -142,7 +142,7 @@ const files = (
         "libavutil/x86/imgutils_init.c",
         "libavutil/x86/float_dsp_init.c",
         "libavutil/x86/fixed_dsp_init.c",
-        "libavutil/x86/cpu.c",
+        // "libavutil/x86/cpu.c",
         // "libavutil/tests/xtea.c",
         // "libavutil/tests/uuid.c",
         // "libavutil/tests/utf8.c",
