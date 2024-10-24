@@ -17,6 +17,13 @@
 
 
 
+# since the current scriptfile can be referenced from anywhere,
+# we'll need to qualify/prefix the SH names with '${BASH_SOURCE[0]}" )'
+# 
+# examples:
+#   "$(dirname -- "${BASH_SOURCE[0]}" )/RegenerateVersionHpp.sh"
+#   "$(dirname -- "${BASH_SOURCE[0]}" )/configure"
+
 if test "0" = 1; then
   # verify Emscripten version
   emcc -v
