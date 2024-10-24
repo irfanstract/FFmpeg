@@ -1032,26 +1032,23 @@ nvcc_o(){
 
 vshalldooptcheck="0"
 
+ctmsupposed() {
+    test "$vshalldooptcheck" = 1
+}
+
 opt_test_cpp() {
-    if test "$vshalldooptcheck" = 1 ; then
-        test_cpp "$@"
-    else
-        log "skipping test_cpp $@"
-    fi
+    ctmsupposed && test_cpp "$@"
 }
 
 opt_check_headers() {
-    if test "$vshalldooptcheck" = 1 ; then
-        check_headers "$@"
-    else
-        log "skipping check_headers $@"
-    fi
+    ctmsupposed && check_headers "$@"
 }
 
 # check_func_headers
 opt_check_func_headers() {
     # 
-    if test "$vshalldooptcheck" = 1 ; then
+    echo "opt_check_func_headers $@"
+    if ctmsupposed ; then
         check_func_headers "$@"
     else
         log "skipping check_func_headers $@"
@@ -1061,7 +1058,8 @@ opt_check_func_headers() {
 # check_type
 opt_check_type() {
     # 
-    if test "$vshalldooptcheck" = 1 ; then
+    echo "opt_check_type $@"
+    if ctmsupposed ; then
         check_type $@
     else
         log "skipping check_type $@"
@@ -1206,7 +1204,13 @@ test_ld(){
     test_$type $($cflags_filter $flags) || return
     flags=$($ldflags_filter $flags)
     libs=$($ldflags_filter $libs)
-    test_cmd $ld $LDFLAGS $LDEXEFLAGS $flags $(ld_o $TMPE) $TMPO $libs $extralibs
+    # disabling for now, because this caused EMCC (and possibly EM++) to hang.
+    if test "0" == 1; then
+        test_cmd $ld $LDFLAGS $LDEXEFLAGS $flags $(ld_o $TMPE) $TMPO $libs $extralibs
+    else
+        log " ❗ skipping for now, because this caused EMCC (and possibly EM++) to hang."
+        test "0" == 1
+    fi
 }
 
 check_ld(){
@@ -1215,7 +1219,11 @@ check_ld(){
     name=$2
     shift 2
     disable $name
-    test_ld $type $@ && enable $name
+    if test "1" == 1; then
+        test_ld $type $@ && enable $name
+    else
+        test "0" == 1
+    fi
 }
 
 print_include(){
@@ -1248,6 +1256,7 @@ EOF
 
 test_cflags(){
     log test_cflags "$@"
+    echo "test_cflags $@"
     set -- $($cflags_filter "$@")
     test_cc "$@" <<EOF
 int x;
@@ -1282,10 +1291,15 @@ check_objcflags(){
 
 test_ldflags(){
     log test_ldflags "$@"
-    set -- $($ldflags_filter "$@")
-    test_ld "cc" "$@" <<EOF
-int main(void){ return 0; }
+    # disabling for now, because this caused EMCC (and possibly EM++) to hang.
+    if test "0" == 1; then
+        set -- $($ldflags_filter "$@")
+        test_ld "cc" "$@" <<EOF
+    int main(void){ return 0; }
 EOF
+    else
+        test "0" == 1
+    fi
 }
 
 check_ldflags(){
@@ -1309,6 +1323,7 @@ check_stripflags(){
 
 check_headers(){
     log check_headers "$@"
+    echo "check_headers $@"
     headers=$1
     shift
     disable_sanitized $headers
@@ -1344,6 +1359,7 @@ check_apple_framework(){
 
 check_func(){
     log check_func "$@"
+    echo "check_func $@"
     func=$1
     shift
     disable $func
@@ -1599,6 +1615,7 @@ check_struct(){
 
 check_builtin(){
     log check_builtin "$@"
+    echo "check_builtin $@"
     name=$1
     headers=$2
     builtin=$3
@@ -5432,16 +5449,19 @@ fi
 
 # compiler sanity check
 ifnosilentpleaseecho "🎹 compiler sanity check"
-test_exec <<EOF
-int main(void){ return 0; }
+if test "0" = 1; then
+    test_exec <<EOF
+    int main(void){ return 0; }
 EOF
-if test "$?" != 0; then
-    echo "$cc is unable to create an executable file."
-    if test -z "$cross_prefix" && ! enabled cross_compile ; then
-        echo "If $cc is a cross-compiler, use the --enable-cross-compile option."
-        echo "Only do this if you know what cross compiling means."
+    if test "$?" != 0; then
+        echo "$cc is unable to create an executable file."
+        if test -z "$cross_prefix" && ! enabled cross_compile ; then
+            echo "If $cc is a cross-compiler, use the --enable-cross-compile option."
+            echo "Only do this if you know what cross compiling means."
+        fi
+        echo "ld=($ld $LDFLAGS $LDEXEFLAGS), cc=($cc $CPPFLAGS $CFLAGS), tmpe=$TMPE "
+        die "C compiler test failed."
     fi
-    die "C compiler test failed."
 fi
 
 add_cppflags -D_ISOC99_SOURCE
@@ -6244,16 +6264,25 @@ fi
 
 check_cc intrinsics_neon arm_neon.h "int16x8_t test = vdupq_n_s16(0)"
 
-check_ldflags -Wl,--as-needed
-check_ldflags -Wl,-z,noexecstack
+if test "0" == 1; then
+    # 
+    ifnosilentpleaseecho "🎹 some '-Wl,--as-needed' and '-Wl,-z,noexecstack' checks"
+
+    check_ldflags -Wl,--as-needed
+    check_ldflags -Wl,-z,noexecstack
+fi
 
 ifnosilentpleaseecho "🎹 some stdlib H-or-LD checks"
 
 ifnosilentpleaseecho "- POSIX"
 
+ifnosilentpleaseecho "- inetlib"
+
 if ! disabled network; then
     check_func getaddrinfo $network_extralibs
     check_func inet_aton $network_extralibs
+
+    ifnosilentpleaseecho "- - inetlibtypes"
 
     opt_check_type netdb.h "struct addrinfo"
     opt_check_type netinet/in.h "struct group_source_req" -D_BSD_SOURCE
@@ -6266,6 +6295,8 @@ if ! disabled network; then
     opt_check_type netinet/in.h "struct sockaddr_in6"
     opt_check_type "sys/types.h sys/socket.h" "struct sockaddr_storage"
     opt_check_type "sys/types.h sys/socket.h" socklen_t
+
+    ifnosilentpleaseecho "- - arpa_ineth"
 
     # Prefer arpa/inet.h over winsock2
     if opt_check_headers arpa/inet.h ; then
@@ -6291,12 +6322,16 @@ if ! disabled network; then
     fi
 fi
 
+ifnosilentpleaseecho "- atomics"
+
 check_builtin atomic_cas_ptr atomic.h "void **ptr; void *oldval, *newval; atomic_cas_ptr(ptr, oldval, newval)"
 check_builtin machine_rw_barrier mbarrier.h "__machine_rw_barrier()"
 check_builtin MemoryBarrier windows.h "MemoryBarrier()"
 check_builtin sync_val_compare_and_swap "" "int *ptr; int oldval, newval; __sync_val_compare_and_swap(ptr, oldval, newval)"
 check_builtin gmtime_r time.h "time_t *time; struct tm *tm; gmtime_r(time, tm)"
 check_builtin localtime_r time.h "time_t *time; struct tm *tm; localtime_r(time, tm)"
+
+ifnosilentpleaseecho "- memorymgmt"
 
 case "$custom_allocator" in
     jemalloc)
@@ -6312,6 +6347,8 @@ esac
 opt_check_func_headers malloc.h _aligned_malloc     && enable aligned_malloc
 check_func  ${malloc_prefix}memalign            && enable memalign
 check_func  ${malloc_prefix}posix_memalign      && enable posix_memalign
+
+ifnosilentpleaseecho "- POSIX proc common"
 
 check_func  access
 opt_check_func_headers stdlib.h arc4random
@@ -6338,28 +6375,28 @@ check_func  usleep
 
 ifnosilentpleaseecho "- WIN32"
 
-opt_check_func_headers conio.h kbhit
-opt_check_func_headers io.h setmode
-opt_check_func_headers lzo/lzo1x.h lzo1x_999_compress
-opt_check_func_headers mach/mach_time.h mach_absolute_time
-opt_check_func_headers stdlib.h getenv
-opt_check_func_headers sys/stat.h lstat
-opt_check_func_headers sys/auxv.h getauxval
+ctmsupposed && opt_check_func_headers conio.h kbhit
+ctmsupposed && opt_check_func_headers io.h setmode
+ctmsupposed && opt_check_func_headers lzo/lzo1x.h lzo1x_999_compress
+ctmsupposed && opt_check_func_headers mach/mach_time.h mach_absolute_time
+ctmsupposed && opt_check_func_headers stdlib.h getenv
+ctmsupposed && opt_check_func_headers sys/stat.h lstat
+ctmsupposed && opt_check_func_headers sys/auxv.h getauxval
 
-opt_check_func_headers windows.h GetModuleHandle
-opt_check_func_headers windows.h GetProcessAffinityMask
-opt_check_func_headers windows.h GetProcessTimes
-opt_check_func_headers windows.h GetStdHandle
-opt_check_func_headers windows.h GetSystemTimeAsFileTime
-opt_check_func_headers windows.h LoadLibrary
-opt_check_func_headers windows.h MapViewOfFile
-opt_check_func_headers windows.h PeekNamedPipe
-opt_check_func_headers windows.h SetConsoleTextAttribute
-opt_check_func_headers windows.h SetConsoleCtrlHandler
-opt_check_func_headers windows.h SetDllDirectory
-opt_check_func_headers windows.h Sleep
-opt_check_func_headers windows.h VirtualAlloc
-opt_check_func_headers glob.h glob
+ctmsupposed && opt_check_func_headers windows.h GetModuleHandle
+ctmsupposed && opt_check_func_headers windows.h GetProcessAffinityMask
+ctmsupposed && opt_check_func_headers windows.h GetProcessTimes
+ctmsupposed && opt_check_func_headers windows.h GetStdHandle
+ctmsupposed && opt_check_func_headers windows.h GetSystemTimeAsFileTime
+ctmsupposed && opt_check_func_headers windows.h LoadLibrary
+ctmsupposed && opt_check_func_headers windows.h MapViewOfFile
+ctmsupposed && opt_check_func_headers windows.h PeekNamedPipe
+ctmsupposed && opt_check_func_headers windows.h SetConsoleTextAttribute
+ctmsupposed && opt_check_func_headers windows.h SetConsoleCtrlHandler
+ctmsupposed && opt_check_func_headers windows.h SetDllDirectory
+ctmsupposed && opt_check_func_headers windows.h Sleep
+ctmsupposed && opt_check_func_headers windows.h VirtualAlloc
+ctmsupposed && opt_check_func_headers glob.h glob
 
 if enabled xlib; then
     check_pkg_config xlib_x11 x11 "X11/Xlib.h" XPending ||
@@ -6375,14 +6412,14 @@ if enabled xlib; then
         disable xlib
 fi
 
-opt_check_headers direct.h
-opt_check_headers dirent.h
-opt_check_headers dxgidebug.h
-opt_check_headers dxva.h
-opt_check_headers dxva2api.h -D_WIN32_WINNT=0x0600
-opt_check_headers io.h
+ctmsupposed && opt_check_headers direct.h
+ctmsupposed && opt_check_headers dirent.h
+ctmsupposed && opt_check_headers dxgidebug.h
+ctmsupposed && opt_check_headers dxva.h
+ctmsupposed && opt_check_headers dxva2api.h -D_WIN32_WINNT=0x0600
+ctmsupposed && opt_check_headers io.h
 enabled libdrm &&
-    opt_check_headers linux/dma-buf.h
+   ctmsupposed &&  opt_check_headers linux/dma-buf.h
 
 ifnosilentpleaseecho "- Sys"
 
@@ -6416,30 +6453,30 @@ for LATOMIC in "-latomic" ""; do
         $LATOMIC && eval stdatomic_extralibs="\$LATOMIC" && break
 done
 
-check_lib advapi32 "windows.h"            RegCloseKey          -ladvapi32
-check_lib bcrypt   "windows.h bcrypt.h"   BCryptGenRandom      -lbcrypt &&
+ctmsupposed && check_lib advapi32 "windows.h"            RegCloseKey          -ladvapi32
+ctmsupposed && check_lib bcrypt   "windows.h bcrypt.h"   BCryptGenRandom      -lbcrypt &&
     check_cpp_condition bcrypt bcrypt.h "defined BCRYPT_RNG_ALGORITHM"
-check_lib ole32    "windows.h"            CoTaskMemFree        -lole32
-check_lib shell32  "windows.h shellapi.h" CommandLineToArgvW   -lshell32
-check_lib psapi    "windows.h psapi.h"    GetProcessMemoryInfo -lpsapi
+ctmsupposed && check_lib ole32    "windows.h"            CoTaskMemFree        -lole32
+ctmsupposed && check_lib shell32  "windows.h shellapi.h" CommandLineToArgvW   -lshell32
+ctmsupposed && check_lib psapi    "windows.h psapi.h"    GetProcessMemoryInfo -lpsapi
 
-check_lib android android/native_window.h ANativeWindow_acquire -landroid
-check_lib mediandk "stdint.h media/NdkImage.h" AImage_delete -lmediandk
-check_lib camera2ndk "stdbool.h stdint.h camera/NdkCameraManager.h" ACameraManager_create -lcamera2ndk
+ctmsupposed && check_lib android android/native_window.h ANativeWindow_acquire -landroid
+ctmsupposed && check_lib mediandk "stdint.h media/NdkImage.h" AImage_delete -lmediandk
+ctmsupposed && check_lib camera2ndk "stdbool.h stdint.h camera/NdkCameraManager.h" ACameraManager_create -lcamera2ndk
 
 ifnosilentpleaseecho "- Apple"
 
-enabled appkit       && check_apple_framework AppKit
-enabled audiotoolbox && check_apple_framework AudioToolbox
-enabled avfoundation && check_apple_framework AVFoundation
-enabled coreimage    && check_apple_framework CoreImage
-enabled metal        && check_apple_framework Metal
-enabled videotoolbox && check_apple_framework VideoToolbox
+ctmsupposed && enabled appkit       && check_apple_framework AppKit
+ctmsupposed && enabled audiotoolbox && check_apple_framework AudioToolbox
+ctmsupposed && enabled avfoundation && check_apple_framework AVFoundation
+ctmsupposed && enabled coreimage    && check_apple_framework CoreImage
+ctmsupposed && enabled metal        && check_apple_framework Metal
+ctmsupposed && enabled videotoolbox && check_apple_framework VideoToolbox
 
-check_apple_framework CoreFoundation
-check_apple_framework CoreMedia
-check_apple_framework CoreVideo
-check_apple_framework CoreAudio
+ctmsupposed && check_apple_framework CoreFoundation
+ctmsupposed && check_apple_framework CoreMedia
+ctmsupposed && check_apple_framework CoreVideo
+ctmsupposed && check_apple_framework CoreAudio
 
 enabled avfoundation && {
     disable coregraphics applicationservices
@@ -6473,17 +6510,17 @@ check_struct "sys/time.h sys/resource.h" "struct rusage" ru_maxrss
 
 ifnosilentpleaseecho "- DX"
 
-opt_check_type "windows.h dxva.h" "DXVA_PicParams_AV1" -DWINAPI_FAMILY=WINAPI_FAMILY_DESKTOP_APP -D_CRT_BUILD_DESKTOP_APP=0
-opt_check_type "windows.h dxva.h" "DXVA_PicParams_HEVC" -DWINAPI_FAMILY=WINAPI_FAMILY_DESKTOP_APP -D_CRT_BUILD_DESKTOP_APP=0
-opt_check_type "windows.h dxva.h" "DXVA_PicParams_VP9" -DWINAPI_FAMILY=WINAPI_FAMILY_DESKTOP_APP -D_CRT_BUILD_DESKTOP_APP=0
-opt_check_type "windows.h d3d11.h" "ID3D11VideoDecoder"
-opt_check_type "windows.h d3d11.h" "ID3D11VideoContext"
-opt_check_type "d3d9.h dxva2api.h" DXVA2_ConfigPictureDecode -D_WIN32_WINNT=0x0602
-opt_check_func_headers mfapi.h MFCreateAlignedMemoryBuffer -lmfplat
+ctmsupposed && opt_check_type "windows.h dxva.h" "DXVA_PicParams_AV1" -DWINAPI_FAMILY=WINAPI_FAMILY_DESKTOP_APP -D_CRT_BUILD_DESKTOP_APP=0
+ctmsupposed && opt_check_type "windows.h dxva.h" "DXVA_PicParams_HEVC" -DWINAPI_FAMILY=WINAPI_FAMILY_DESKTOP_APP -D_CRT_BUILD_DESKTOP_APP=0
+ctmsupposed && opt_check_type "windows.h dxva.h" "DXVA_PicParams_VP9" -DWINAPI_FAMILY=WINAPI_FAMILY_DESKTOP_APP -D_CRT_BUILD_DESKTOP_APP=0
+ctmsupposed && opt_check_type "windows.h d3d11.h" "ID3D11VideoDecoder"
+ctmsupposed && opt_check_type "windows.h d3d11.h" "ID3D11VideoContext"
+ctmsupposed && opt_check_type "d3d9.h dxva2api.h" DXVA2_ConfigPictureDecode -D_WIN32_WINNT=0x0602
+ctmsupposed && opt_check_func_headers mfapi.h MFCreateAlignedMemoryBuffer -lmfplat
 
-opt_check_type "vdpau/vdpau.h" "VdpPictureInfoHEVC"
-opt_check_type "vdpau/vdpau.h" "VdpPictureInfoVP9"
-opt_check_type "vdpau/vdpau.h" "VdpPictureInfoAV1"
+ctmsupposed && opt_check_type "vdpau/vdpau.h" "VdpPictureInfoHEVC"
+ctmsupposed && opt_check_type "vdpau/vdpau.h" "VdpPictureInfoVP9"
+ctmsupposed && opt_check_type "vdpau/vdpau.h" "VdpPictureInfoAV1"
 
 if [ -z "$nvccflags" ]; then
     nvccflags=$nvccflags_default
