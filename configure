@@ -6281,25 +6281,25 @@ ifnosilentpleaseecho "🎹 some stdlib H-or-LD checks"
 
 ifnosilentpleaseecho "- POSIX"
 
-# ifnosilentpleaseecho "- inetlib"
+ifnosilentpleaseecho "- inetlib"
 
-# if ! disabled network; then
-#     check_func getaddrinfo $network_extralibs
-#     check_func inet_aton $network_extralibs
+if ! disabled network; then
+    check_func getaddrinfo $network_extralibs
+    check_func inet_aton $network_extralibs
 
-#     ifnosilentpleaseecho "- - inetlibtypes"
+    ifnosilentpleaseecho "- - inetlibtypes"
 
-#     opt_check_type netdb.h "struct addrinfo"
-#     opt_check_type netinet/in.h "struct group_source_req" -D_BSD_SOURCE
-#     opt_check_type netinet/in.h "struct ip_mreq_source" -D_BSD_SOURCE
-#     opt_check_type netinet/in.h "struct ipv6_mreq" -D_DARWIN_C_SOURCE
-#     opt_check_type poll.h "struct pollfd"
-#     opt_check_type netinet/sctp.h "struct sctp_event_subscribe"
-#     check_struct "sys/socket.h" "struct msghdr" msg_flags
-#     check_struct "sys/types.h sys/socket.h" "struct sockaddr" sa_len
-#     opt_check_type netinet/in.h "struct sockaddr_in6"
-#     opt_check_type "sys/types.h sys/socket.h" "struct sockaddr_storage"
-#     opt_check_type "sys/types.h sys/socket.h" socklen_t
+    opt_check_type netdb.h "struct addrinfo"
+    opt_check_type netinet/in.h "struct group_source_req" -D_BSD_SOURCE
+    opt_check_type netinet/in.h "struct ip_mreq_source" -D_BSD_SOURCE
+    opt_check_type netinet/in.h "struct ipv6_mreq" -D_DARWIN_C_SOURCE
+    opt_check_type poll.h "struct pollfd"
+    opt_check_type netinet/sctp.h "struct sctp_event_subscribe"
+    check_struct "sys/socket.h" "struct msghdr" msg_flags
+    check_struct "sys/types.h sys/socket.h" "struct sockaddr" sa_len
+    opt_check_type netinet/in.h "struct sockaddr_in6"
+    opt_check_type "sys/types.h sys/socket.h" "struct sockaddr_storage"
+    opt_check_type "sys/types.h sys/socket.h" socklen_t
 
 #     ifnosilentpleaseecho "- - arpa_ineth"
 
@@ -6325,7 +6325,7 @@ ifnosilentpleaseecho "- POSIX"
 #     else
 #         disable network
 #     fi
-# fi
+fi
 
 # ifnosilentpleaseecho "- atomics"
 
