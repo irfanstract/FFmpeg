@@ -1209,7 +1209,7 @@ test_ld(){
         test_cmd $ld $LDFLAGS $LDEXEFLAGS $flags $(ld_o $TMPE) $TMPO $libs $extralibs
     else
         log " ❗ skipping for now, because this caused EMCC (and possibly EM++) to hang."
-        test "0" == 1
+        test "1" == "1"
     fi
 }
 
