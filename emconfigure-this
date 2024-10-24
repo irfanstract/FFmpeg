@@ -22,6 +22,9 @@ if test "0" = 1; then
   emcc -v
 fi
 
+PATH="/ucrt64/bin:/usr/local/bin:/usr/bin:/bin:/c/Windows/System32:/c/Windows:/c/Windows/System32/Wbem:/c/Windows/System32/WindowsPowerShell/v1.0/:/usr/bin/site_perl:/usr/bin/vendor_perl:/usr/bin/core_perl"
+PATH="/j/Dev/emsdk/upstream/emscripten:$PATH"
+
 # configure FFMpeg with Emscripten
 CFLAGS="-s USE_PTHREADS"  # a dependency 
 flags=(
