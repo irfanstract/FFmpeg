@@ -6627,23 +6627,25 @@ ifnosilentpleaseecho "- POSIX"
 ifnosilentpleaseecho "🎹 On some systems dynamic loading requires no extra linker flags"
 check_lib libdl dlfcn.h "dlopen dlsym" || check_lib libdl dlfcn.h "dlopen dlsym" -ldl
 
-# ifnosilentpleaseecho "🎹 Some Math Lib Checks"
+ifnosilentpleaseecho "🎹 Some Math Lib Checks"
 
-# check_lib libm math.h sin -lm
+check_lib libm math.h sin -lm
 
-# atan2f_args=2
-# copysign_args=2
-# hypot_args=2
-# ldexpf_args=2
-# powf_args=2
+atan2f_args=2
+copysign_args=2
+hypot_args=2
+ldexpf_args=2
+powf_args=2
 
-# for func in $MATH_FUNCS; do
-#     eval check_mathfunc $func \${${func}_args:-1} $libm_extralibs
-# done
+for func in $MATH_FUNCS; do
+    echo "- check_mathfunc $func "
+    eval check_mathfunc $func \${${func}_args:-1} $libm_extralibs
+done
 
-# for func in $COMPLEX_FUNCS; do
-#     eval check_complexfunc $func \${${func}_args:-1}
-# done
+for func in $COMPLEX_FUNCS; do
+    echo "- check_complexfunc $func "
+    eval check_complexfunc $func \${${func}_args:-1}
+done
 
 # # these are off by default, so fail if requested and not available
 
