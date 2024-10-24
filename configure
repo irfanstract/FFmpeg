@@ -1030,6 +1030,44 @@ nvcc_o(){
     eval printf '%s\\n' $NVCC_O
 }
 
+vshalldooptcheck="0"
+
+opt_test_cpp() {
+    if test "$vshalldooptcheck" = 1 ; then
+        test_cpp "$@"
+    else
+        log "skipping test_cpp $@"
+    fi
+}
+
+opt_check_headers() {
+    if test "$vshalldooptcheck" = 1 ; then
+        check_headers "$@"
+    else
+        log "skipping check_headers $@"
+    fi
+}
+
+# check_func_headers
+opt_check_func_headers() {
+    # 
+    if test "$vshalldooptcheck" = 1 ; then
+        check_func_headers "$@"
+    else
+        log "skipping check_func_headers $@"
+    fi
+}
+
+# check_type
+opt_check_type() {
+    # 
+    if test "$vshalldooptcheck" = 1 ; then
+        check_type $@
+    else
+        log "skipping check_type $@"
+    fi
+}
+
 test_cc(){
     log test_cc "$@"
     cat > $TMPC
@@ -1279,7 +1317,7 @@ check_headers(){
             print_include $hdr
         done
         echo "int x;"
-    } | test_cpp "$@" && enable_sanitized $headers
+    } | opt_test_cpp "$@" && enable_sanitized $headers
 }
 
 check_header_objcc(){
@@ -1428,7 +1466,7 @@ check_lib(){
     funcs="$3"
     shift 3
     disable $name
-    check_func_headers "$headers" "$funcs" "$@" &&
+    opt_check_func_headers "$headers" "$funcs" "$@" &&
         enable $name && eval ${name}_extralibs="\$@"
 }
 
@@ -1456,7 +1494,7 @@ test_pkg_config(){
     pkg_cflags=$($pkg_config --cflags $pkg_config_flags $pkg)
     pkg_libs=$($pkg_config --libs $pkg_config_flags $pkg)
     pkg_incdir=$($pkg_config --variable=includedir $pkg_config_flags $pkg)
-    check_func_headers "$headers" "$funcs" $pkg_cflags $pkg_libs "$@" &&
+    opt_check_func_headers "$headers" "$funcs" $pkg_cflags $pkg_libs "$@" &&
         enable $name &&
         set_sanitized "${name}_cflags"    $pkg_cflags &&
         set_sanitized "${name}_incdir"    $pkg_incdir &&
@@ -1612,7 +1650,7 @@ require_cpp(){
 require_headers(){
     log require_headers "$@"
     headers="$1"
-    check_headers "$@" || die "ERROR: $headers not found"
+    opt_check_headers "$@" || die "ERROR: $headers not found"
 }
 
 require_cpp_condition(){
@@ -5559,7 +5597,7 @@ case $target_os in
         enabled x86_64 && objformat="macho64" || objformat="macho32"
         enabled_any pic shared x86_64 ||
             { check_cflags -mdynamic-no-pic && add_asflags -mdynamic-no-pic; }
-        check_headers dispatch/dispatch.h &&
+        opt_check_headers dispatch/dispatch.h &&
             add_cppflags '-I\$(SRC_PATH)/compat/dispatch_semaphore'
         if test -n "$sysroot"; then
             is_in -isysroot $cc $CPPFLAGS $CFLAGS || check_cppflags -isysroot $sysroot
@@ -6217,37 +6255,37 @@ if ! disabled network; then
     check_func getaddrinfo $network_extralibs
     check_func inet_aton $network_extralibs
 
-    check_type netdb.h "struct addrinfo"
-    check_type netinet/in.h "struct group_source_req" -D_BSD_SOURCE
-    check_type netinet/in.h "struct ip_mreq_source" -D_BSD_SOURCE
-    check_type netinet/in.h "struct ipv6_mreq" -D_DARWIN_C_SOURCE
-    check_type poll.h "struct pollfd"
-    check_type netinet/sctp.h "struct sctp_event_subscribe"
+    opt_check_type netdb.h "struct addrinfo"
+    opt_check_type netinet/in.h "struct group_source_req" -D_BSD_SOURCE
+    opt_check_type netinet/in.h "struct ip_mreq_source" -D_BSD_SOURCE
+    opt_check_type netinet/in.h "struct ipv6_mreq" -D_DARWIN_C_SOURCE
+    opt_check_type poll.h "struct pollfd"
+    opt_check_type netinet/sctp.h "struct sctp_event_subscribe"
     check_struct "sys/socket.h" "struct msghdr" msg_flags
     check_struct "sys/types.h sys/socket.h" "struct sockaddr" sa_len
-    check_type netinet/in.h "struct sockaddr_in6"
-    check_type "sys/types.h sys/socket.h" "struct sockaddr_storage"
-    check_type "sys/types.h sys/socket.h" socklen_t
+    opt_check_type netinet/in.h "struct sockaddr_in6"
+    opt_check_type "sys/types.h sys/socket.h" "struct sockaddr_storage"
+    opt_check_type "sys/types.h sys/socket.h" socklen_t
 
     # Prefer arpa/inet.h over winsock2
-    if check_headers arpa/inet.h ; then
+    if opt_check_headers arpa/inet.h ; then
         check_func closesocket
-    elif check_headers winsock2.h ; then
-        check_func_headers winsock2.h closesocket -lws2 &&
+    elif opt_check_headers winsock2.h ; then
+        opt_check_func_headers winsock2.h closesocket -lws2 &&
             network_extralibs="-lws2" ||
-        { check_func_headers winsock2.h closesocket -lws2_32 &&
+        { opt_check_func_headers winsock2.h closesocket -lws2_32 &&
             network_extralibs="-lws2_32"; } || disable winsock2_h network
-        check_func_headers ws2tcpip.h getaddrinfo $network_extralibs
+        opt_check_func_headers ws2tcpip.h getaddrinfo $network_extralibs
 
-        check_type ws2tcpip.h socklen_t
-        check_type ws2tcpip.h "struct addrinfo"
-        check_type ws2tcpip.h "struct group_source_req"
-        check_type ws2tcpip.h "struct ip_mreq_source"
-        check_type ws2tcpip.h "struct ipv6_mreq"
-        check_type winsock2.h "struct pollfd"
+        opt_check_type ws2tcpip.h socklen_t
+        opt_check_type ws2tcpip.h "struct addrinfo"
+        opt_check_type ws2tcpip.h "struct group_source_req"
+        opt_check_type ws2tcpip.h "struct ip_mreq_source"
+        opt_check_type ws2tcpip.h "struct ipv6_mreq"
+        opt_check_type winsock2.h "struct pollfd"
         check_struct winsock2.h "struct sockaddr" sa_len
-        check_type ws2tcpip.h "struct sockaddr_in6"
-        check_type ws2tcpip.h "struct sockaddr_storage"
+        opt_check_type ws2tcpip.h "struct sockaddr_in6"
+        opt_check_type ws2tcpip.h "struct sockaddr_storage"
     else
         disable network
     fi
@@ -6271,12 +6309,12 @@ case "$custom_allocator" in
     ;;
 esac
 
-check_func_headers malloc.h _aligned_malloc     && enable aligned_malloc
+opt_check_func_headers malloc.h _aligned_malloc     && enable aligned_malloc
 check_func  ${malloc_prefix}memalign            && enable memalign
 check_func  ${malloc_prefix}posix_memalign      && enable posix_memalign
 
 check_func  access
-check_func_headers stdlib.h arc4random
+opt_check_func_headers stdlib.h arc4random
 check_lib   clock_gettime time.h clock_gettime || check_lib clock_gettime time.h clock_gettime -lrt
 check_func  fcntl
 check_func  fork
@@ -6289,7 +6327,7 @@ check_func  mkstemp
 check_func  mmap
 check_func  mprotect
 # Solaris has nanosleep in -lrt, OpenSolaris no longer needs that
-check_func_headers time.h nanosleep || check_lib nanosleep time.h nanosleep -lrt
+opt_check_func_headers time.h nanosleep || check_lib nanosleep time.h nanosleep -lrt
 check_func  sched_getaffinity
 check_func  setrlimit
 check_struct "sys/stat.h" "struct stat" st_mtim.tv_nsec -D_BSD_SOURCE
@@ -6300,28 +6338,28 @@ check_func  usleep
 
 ifnosilentpleaseecho "- WIN32"
 
-check_func_headers conio.h kbhit
-check_func_headers io.h setmode
-check_func_headers lzo/lzo1x.h lzo1x_999_compress
-check_func_headers mach/mach_time.h mach_absolute_time
-check_func_headers stdlib.h getenv
-check_func_headers sys/stat.h lstat
-check_func_headers sys/auxv.h getauxval
+opt_check_func_headers conio.h kbhit
+opt_check_func_headers io.h setmode
+opt_check_func_headers lzo/lzo1x.h lzo1x_999_compress
+opt_check_func_headers mach/mach_time.h mach_absolute_time
+opt_check_func_headers stdlib.h getenv
+opt_check_func_headers sys/stat.h lstat
+opt_check_func_headers sys/auxv.h getauxval
 
-check_func_headers windows.h GetModuleHandle
-check_func_headers windows.h GetProcessAffinityMask
-check_func_headers windows.h GetProcessTimes
-check_func_headers windows.h GetStdHandle
-check_func_headers windows.h GetSystemTimeAsFileTime
-check_func_headers windows.h LoadLibrary
-check_func_headers windows.h MapViewOfFile
-check_func_headers windows.h PeekNamedPipe
-check_func_headers windows.h SetConsoleTextAttribute
-check_func_headers windows.h SetConsoleCtrlHandler
-check_func_headers windows.h SetDllDirectory
-check_func_headers windows.h Sleep
-check_func_headers windows.h VirtualAlloc
-check_func_headers glob.h glob
+opt_check_func_headers windows.h GetModuleHandle
+opt_check_func_headers windows.h GetProcessAffinityMask
+opt_check_func_headers windows.h GetProcessTimes
+opt_check_func_headers windows.h GetStdHandle
+opt_check_func_headers windows.h GetSystemTimeAsFileTime
+opt_check_func_headers windows.h LoadLibrary
+opt_check_func_headers windows.h MapViewOfFile
+opt_check_func_headers windows.h PeekNamedPipe
+opt_check_func_headers windows.h SetConsoleTextAttribute
+opt_check_func_headers windows.h SetConsoleCtrlHandler
+opt_check_func_headers windows.h SetDllDirectory
+opt_check_func_headers windows.h Sleep
+opt_check_func_headers windows.h VirtualAlloc
+opt_check_func_headers glob.h glob
 
 if enabled xlib; then
     check_pkg_config xlib_x11 x11 "X11/Xlib.h" XPending ||
@@ -6337,34 +6375,34 @@ if enabled xlib; then
         disable xlib
 fi
 
-check_headers direct.h
-check_headers dirent.h
-check_headers dxgidebug.h
-check_headers dxva.h
-check_headers dxva2api.h -D_WIN32_WINNT=0x0600
-check_headers io.h
+opt_check_headers direct.h
+opt_check_headers dirent.h
+opt_check_headers dxgidebug.h
+opt_check_headers dxva.h
+opt_check_headers dxva2api.h -D_WIN32_WINNT=0x0600
+opt_check_headers io.h
 enabled libdrm &&
-    check_headers linux/dma-buf.h
+    opt_check_headers linux/dma-buf.h
 
 ifnosilentpleaseecho "- Sys"
 
-check_headers linux/perf_event.h
-check_headers libcrystalhd/libcrystalhd_if.h
-check_headers malloc.h
-check_headers mftransform.h
-check_headers net/udplite.h
-check_headers poll.h
-check_headers sys/param.h
-check_headers sys/resource.h
-check_headers sys/select.h
-check_headers sys/time.h
-check_headers sys/un.h
-check_headers termios.h
-check_headers unistd.h
-check_headers valgrind/valgrind.h
-check_func_headers VideoToolbox/VTCompressionSession.h VTCompressionSessionPrepareToEncodeFrames -framework VideoToolbox
-check_headers windows.h
-check_headers asm/types.h
+opt_check_headers linux/perf_event.h
+opt_check_headers libcrystalhd/libcrystalhd_if.h
+opt_check_headers malloc.h
+opt_check_headers mftransform.h
+opt_check_headers net/udplite.h
+opt_check_headers poll.h
+opt_check_headers sys/param.h
+opt_check_headers sys/resource.h
+opt_check_headers sys/select.h
+opt_check_headers sys/time.h
+opt_check_headers sys/un.h
+opt_check_headers termios.h
+opt_check_headers unistd.h
+opt_check_headers valgrind/valgrind.h
+opt_check_func_headers VideoToolbox/VTCompressionSession.h VTCompressionSessionPrepareToEncodeFrames -framework VideoToolbox
+opt_check_headers windows.h
+opt_check_headers asm/types.h
 
 # it seems there are versions of clang in some distros that try to use the
 # gcc headers, which explodes for stdatomic
@@ -6410,23 +6448,23 @@ enabled avfoundation && {
 
 enabled videotoolbox && {
     check_lib coreservices CoreServices/CoreServices.h UTGetOSTypeFromString "-framework CoreServices"
-    check_func_headers CoreMedia/CMFormatDescription.h kCMVideoCodecType_HEVC "-framework CoreMedia"
-    check_func_headers CoreMedia/CMFormatDescription.h kCMVideoCodecType_HEVCWithAlpha "-framework CoreMedia"
-    check_func_headers CoreMedia/CMFormatDescription.h kCMVideoCodecType_VP9 "-framework CoreMedia"
-    check_func_headers CoreVideo/CVPixelBuffer.h kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange "-framework CoreVideo"
-    check_func_headers CoreVideo/CVPixelBuffer.h kCVPixelFormatType_422YpCbCr8BiPlanarVideoRange "-framework CoreVideo"
-    check_func_headers CoreVideo/CVPixelBuffer.h kCVPixelFormatType_422YpCbCr10BiPlanarVideoRange "-framework CoreVideo"
-    check_func_headers CoreVideo/CVPixelBuffer.h kCVPixelFormatType_422YpCbCr16BiPlanarVideoRange "-framework CoreVideo"
-    check_func_headers CoreVideo/CVPixelBuffer.h kCVPixelFormatType_444YpCbCr8BiPlanarVideoRange "-framework CoreVideo"
-    check_func_headers CoreVideo/CVPixelBuffer.h kCVPixelFormatType_444YpCbCr10BiPlanarVideoRange "-framework CoreVideo"
-    check_func_headers CoreVideo/CVPixelBuffer.h kCVPixelFormatType_444YpCbCr16BiPlanarVideoRange "-framework CoreVideo"
-    check_func_headers CoreVideo/CVImageBuffer.h kCVImageBufferTransferFunction_SMPTE_ST_2084_PQ "-framework CoreVideo"
-    check_func_headers CoreVideo/CVImageBuffer.h kCVImageBufferTransferFunction_ITU_R_2100_HLG "-framework CoreVideo"
-    check_func_headers CoreVideo/CVImageBuffer.h kCVImageBufferTransferFunction_Linear "-framework CoreVideo"
-    check_func_headers CoreVideo/CVImageBuffer.h kCVImageBufferYCbCrMatrix_ITU_R_2020 "-framework CoreVideo"
-    check_func_headers CoreVideo/CVImageBuffer.h kCVImageBufferColorPrimaries_ITU_R_2020 "-framework CoreVideo"
-    check_func_headers CoreVideo/CVImageBuffer.h kCVImageBufferTransferFunction_ITU_R_2020 "-framework CoreVideo"
-    check_func_headers CoreVideo/CVImageBuffer.h kCVImageBufferTransferFunction_SMPTE_ST_428_1 "-framework CoreVideo"
+    opt_check_func_headers CoreMedia/CMFormatDescription.h kCMVideoCodecType_HEVC "-framework CoreMedia"
+    opt_check_func_headers CoreMedia/CMFormatDescription.h kCMVideoCodecType_HEVCWithAlpha "-framework CoreMedia"
+    opt_check_func_headers CoreMedia/CMFormatDescription.h kCMVideoCodecType_VP9 "-framework CoreMedia"
+    opt_check_func_headers CoreVideo/CVPixelBuffer.h kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange "-framework CoreVideo"
+    opt_check_func_headers CoreVideo/CVPixelBuffer.h kCVPixelFormatType_422YpCbCr8BiPlanarVideoRange "-framework CoreVideo"
+    opt_check_func_headers CoreVideo/CVPixelBuffer.h kCVPixelFormatType_422YpCbCr10BiPlanarVideoRange "-framework CoreVideo"
+    opt_check_func_headers CoreVideo/CVPixelBuffer.h kCVPixelFormatType_422YpCbCr16BiPlanarVideoRange "-framework CoreVideo"
+    opt_check_func_headers CoreVideo/CVPixelBuffer.h kCVPixelFormatType_444YpCbCr8BiPlanarVideoRange "-framework CoreVideo"
+    opt_check_func_headers CoreVideo/CVPixelBuffer.h kCVPixelFormatType_444YpCbCr10BiPlanarVideoRange "-framework CoreVideo"
+    opt_check_func_headers CoreVideo/CVPixelBuffer.h kCVPixelFormatType_444YpCbCr16BiPlanarVideoRange "-framework CoreVideo"
+    opt_check_func_headers CoreVideo/CVImageBuffer.h kCVImageBufferTransferFunction_SMPTE_ST_2084_PQ "-framework CoreVideo"
+    opt_check_func_headers CoreVideo/CVImageBuffer.h kCVImageBufferTransferFunction_ITU_R_2100_HLG "-framework CoreVideo"
+    opt_check_func_headers CoreVideo/CVImageBuffer.h kCVImageBufferTransferFunction_Linear "-framework CoreVideo"
+    opt_check_func_headers CoreVideo/CVImageBuffer.h kCVImageBufferYCbCrMatrix_ITU_R_2020 "-framework CoreVideo"
+    opt_check_func_headers CoreVideo/CVImageBuffer.h kCVImageBufferColorPrimaries_ITU_R_2020 "-framework CoreVideo"
+    opt_check_func_headers CoreVideo/CVImageBuffer.h kCVImageBufferTransferFunction_ITU_R_2020 "-framework CoreVideo"
+    opt_check_func_headers CoreVideo/CVImageBuffer.h kCVImageBufferTransferFunction_SMPTE_ST_428_1 "-framework CoreVideo"
 }
 
 enabled metal && test_cmd $metalcc -v || disable metal
@@ -6435,17 +6473,17 @@ check_struct "sys/time.h sys/resource.h" "struct rusage" ru_maxrss
 
 ifnosilentpleaseecho "- DX"
 
-check_type "windows.h dxva.h" "DXVA_PicParams_AV1" -DWINAPI_FAMILY=WINAPI_FAMILY_DESKTOP_APP -D_CRT_BUILD_DESKTOP_APP=0
-check_type "windows.h dxva.h" "DXVA_PicParams_HEVC" -DWINAPI_FAMILY=WINAPI_FAMILY_DESKTOP_APP -D_CRT_BUILD_DESKTOP_APP=0
-check_type "windows.h dxva.h" "DXVA_PicParams_VP9" -DWINAPI_FAMILY=WINAPI_FAMILY_DESKTOP_APP -D_CRT_BUILD_DESKTOP_APP=0
-check_type "windows.h d3d11.h" "ID3D11VideoDecoder"
-check_type "windows.h d3d11.h" "ID3D11VideoContext"
-check_type "d3d9.h dxva2api.h" DXVA2_ConfigPictureDecode -D_WIN32_WINNT=0x0602
-check_func_headers mfapi.h MFCreateAlignedMemoryBuffer -lmfplat
+opt_check_type "windows.h dxva.h" "DXVA_PicParams_AV1" -DWINAPI_FAMILY=WINAPI_FAMILY_DESKTOP_APP -D_CRT_BUILD_DESKTOP_APP=0
+opt_check_type "windows.h dxva.h" "DXVA_PicParams_HEVC" -DWINAPI_FAMILY=WINAPI_FAMILY_DESKTOP_APP -D_CRT_BUILD_DESKTOP_APP=0
+opt_check_type "windows.h dxva.h" "DXVA_PicParams_VP9" -DWINAPI_FAMILY=WINAPI_FAMILY_DESKTOP_APP -D_CRT_BUILD_DESKTOP_APP=0
+opt_check_type "windows.h d3d11.h" "ID3D11VideoDecoder"
+opt_check_type "windows.h d3d11.h" "ID3D11VideoContext"
+opt_check_type "d3d9.h dxva2api.h" DXVA2_ConfigPictureDecode -D_WIN32_WINNT=0x0602
+opt_check_func_headers mfapi.h MFCreateAlignedMemoryBuffer -lmfplat
 
-check_type "vdpau/vdpau.h" "VdpPictureInfoHEVC"
-check_type "vdpau/vdpau.h" "VdpPictureInfoVP9"
-check_type "vdpau/vdpau.h" "VdpPictureInfoAV1"
+opt_check_type "vdpau/vdpau.h" "VdpPictureInfoHEVC"
+opt_check_type "vdpau/vdpau.h" "VdpPictureInfoVP9"
+opt_check_type "vdpau/vdpau.h" "VdpPictureInfoAV1"
 
 if [ -z "$nvccflags" ]; then
     nvccflags=$nvccflags_default
@@ -6485,12 +6523,12 @@ check_cpp_condition winrt windows.h "!WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_D
 ifnosilentpleaseecho "- Threads"
 
 if ! disabled w32threads && ! enabled pthreads; then
-    check_func_headers "windows.h process.h" _beginthreadex &&
-        check_type "windows.h" CONDITION_VARIABLE &&
-        check_type "windows.h" INIT_ONCE &&
+    opt_check_func_headers "windows.h process.h" _beginthreadex &&
+        opt_check_type "windows.h" CONDITION_VARIABLE &&
+        opt_check_type "windows.h" INIT_ONCE &&
         enable w32threads || disable w32threads
     if ! enabled w32threads && enabled winrt; then
-        check_func_headers "windows.h" CreateThread &&
+        opt_check_func_headers "windows.h" CreateThread &&
             enable w32threads || disable w32threads
     fi
 fi
@@ -6581,7 +6619,7 @@ enabled decklink          && { require_headers DeckLinkAPI.h &&
 enabled frei0r            && require_headers "frei0r.h"
 enabled gmp               && require gmp gmp.h mpz_export -lgmp
 enabled gnutls            && require_pkg_config gnutls gnutls gnutls/gnutls.h gnutls_global_init
-enabled jni               && { [ $target_os = "android" ] && check_headers jni.h && enabled pthreads || die "ERROR: jni not found"; }
+enabled jni               && { [ $target_os = "android" ] && opt_check_headers jni.h && enabled pthreads || die "ERROR: jni not found"; }
 enabled ladspa            && require_headers "ladspa.h dlfcn.h"
 enabled lcms2             && require_pkg_config lcms2 "lcms2 >= 2.13" lcms2.h cmsCreateContext
 enabled libaom            && require_pkg_config libaom "aom >= 1.0.0" aom/aom_codec.h aom_codec_version
@@ -6652,7 +6690,7 @@ enabled libnpp            && { check_lib libnpp npp.h nppGetLibVersion -lnppig -
                                die "ERROR: libnpp not found"; }
 enabled libopencore_amrnb && require libopencore_amrnb opencore-amrnb/interf_dec.h Decoder_Interface_init -lopencore-amrnb
 enabled libopencore_amrwb && require libopencore_amrwb opencore-amrwb/dec_if.h D_IF_init -lopencore-amrwb
-enabled libopencv         && { check_headers opencv2/core/core_c.h &&
+enabled libopencv         && { opt_check_headers opencv2/core/core_c.h &&
                                { check_pkg_config libopencv opencv opencv2/core/core_c.h cvCreateImageHeader ||
                                  require libopencv opencv2/core/core_c.h cvCreateImageHeader -lopencv_core -lopencv_imgproc; } ||
                                require_pkg_config libopencv opencv opencv/cxcore.h cvCreateImageHeader; }
@@ -6754,7 +6792,7 @@ enabled mmal              && { check_lib mmal interface/mmal/mmal.h mmal_port_co
                                  add_ldflags -L/opt/vc/lib/ &&
                                  check_lib mmal interface/mmal/mmal.h mmal_port_connect -lmmal_core -lmmal_util -lmmal_vc_client -lbcm_host; } ||
                                die "ERROR: mmal not found" &&
-                               check_func_headers interface/mmal/mmal.h "MMAL_PARAMETER_VIDEO_MAX_NUM_CALLBACKS"; }
+                               opt_check_func_headers interface/mmal/mmal.h "MMAL_PARAMETER_VIDEO_MAX_NUM_CALLBACKS"; }
 enabled openal            && { { for al_extralibs in "${OPENAL_LIBS}" "-lopenal" "-lOpenAL32"; do
                                check_lib openal 'AL/al.h' alGetError "${al_extralibs}" && break; done } ||
                                die "ERROR: openal not found"; } &&
@@ -6804,7 +6842,7 @@ if enabled gcrypt; then
     if "${GCRYPT_CONFIG}" --version > /dev/null 2>&1; then
         gcrypt_cflags=$("${GCRYPT_CONFIG}" --cflags)
         gcrypt_extralibs=$("${GCRYPT_CONFIG}" --libs)
-        check_func_headers gcrypt.h gcry_mpi_new $gcrypt_cflags $gcrypt_extralibs ||
+        opt_check_func_headers gcrypt.h gcry_mpi_new $gcrypt_cflags $gcrypt_extralibs ||
             die "ERROR: gcrypt not found"
         add_cflags $gcrypt_cflags
     else
@@ -6820,7 +6858,7 @@ if enabled sdl2; then
         sdl2_extralibs=$("${SDL2_CONFIG}" --libs)
         test_cpp_condition SDL.h "(SDL_MAJOR_VERSION<<16 | SDL_MINOR_VERSION<<8 | SDL_PATCHLEVEL) >= 0x020001" $sdl2_cflags &&
         test_cpp_condition SDL.h "(SDL_MAJOR_VERSION<<16 | SDL_MINOR_VERSION<<8 | SDL_PATCHLEVEL) < 0x030000" $sdl2_cflags &&
-        check_func_headers SDL_events.h SDL_PollEvent $sdl2_extralibs $sdl2_cflags &&
+        opt_check_func_headers SDL_events.h SDL_PollEvent $sdl2_extralibs $sdl2_cflags &&
             enable sdl2
     fi
     if test $target_os = "mingw32"; then
@@ -6846,7 +6884,7 @@ enabled securetransport &&
     check_func SecItemImport "-Wl,-framework,CoreFoundation -Wl,-framework,Security"
 
 enabled schannel &&
-    check_func_headers "windows.h security.h" InitializeSecurityContext -DSECURITY_WIN32 -lsecur32 &&
+    opt_check_func_headers "windows.h security.h" InitializeSecurityContext -DSECURITY_WIN32 -lsecur32 &&
     test_cpp_condition winerror.h "defined(SEC_I_CONTEXT_EXPIRED)" &&
     schannel_extralibs="-lsecur32" ||
         disable schannel
@@ -6865,8 +6903,8 @@ xmllint --version  > /dev/null 2>&1 && enable xmllint   || disable xmllint
 # check V4L2 codecs available in the API
 ifnosilentpleaseecho "- check V4L2 codecs available in the API"
 if enabled v4l2_m2m; then
-    check_headers linux/fb.h
-    check_headers linux/videodev2.h
+    opt_check_headers linux/fb.h
+    opt_check_headers linux/videodev2.h
     test_code cc linux/videodev2.h "struct v4l2_frmsizeenum vfse; vfse.discrete.width = 0;" && enable_sanitized struct_v4l2_frmivalenum_discrete
     check_cc v4l2_m2m linux/videodev2.h "int i = V4L2_CAP_VIDEO_M2M_MPLANE | V4L2_CAP_VIDEO_M2M | V4L2_BUF_FLAG_LAST;"
     check_cc vc1_v4l2_m2m linux/videodev2.h "int i = V4L2_PIX_FMT_VC1_ANNEX_G;"
@@ -6880,7 +6918,7 @@ if enabled v4l2_m2m; then
     check_cc vp9_v4l2_m2m linux/videodev2.h "int i = V4L2_PIX_FMT_VP9;"
 fi
 
-check_headers sys/videoio.h
+opt_check_headers sys/videoio.h
 test_code cc sys/videoio.h "struct v4l2_frmsizeenum vfse; vfse.discrete.width = 0;" && enable_sanitized struct_v4l2_frmivalenum_discrete
 
 check_lib user32 "windows.h winuser.h" GetShellWindow -luser32
@@ -6889,13 +6927,13 @@ check_lib vfw32 "windows.h vfw.h" capCreateCaptureWindow -lvfw32
 # w32api 3.12 had it defined wrong
 check_cpp_condition vfwcap_defines vfw.h "WM_CAP_DRIVER_CONNECT > WM_USER"
 
-check_type "dshow.h" IBaseFilter
+opt_check_type "dshow.h" IBaseFilter
 
 # check for ioctl_meteor.h, ioctl_bt848.h and alternatives
-check_headers "dev/bktr/ioctl_meteor.h dev/bktr/ioctl_bt848.h"                   ||
-    check_headers "machine/ioctl_meteor.h machine/ioctl_bt848.h"                 ||
-    check_headers "dev/video/meteor/ioctl_meteor.h dev/video/bktr/ioctl_bt848.h" ||
-    check_headers "dev/ic/bt8xx.h"
+opt_check_headers "dev/bktr/ioctl_meteor.h dev/bktr/ioctl_bt848.h"                   ||
+    opt_check_headers "machine/ioctl_meteor.h machine/ioctl_bt848.h"                 ||
+    opt_check_headers "dev/video/meteor/ioctl_meteor.h dev/video/bktr/ioctl_bt848.h" ||
+    opt_check_headers "dev/ic/bt8xx.h"
 
 if check_struct sys/soundcard.h audio_buf_info bytes; then
     enable_sanitized sys/soundcard.h
@@ -6932,7 +6970,7 @@ if enabled libxcb; then
     enabled libxcb_xfixes && check_pkg_config libxcb_xfixes xcb-xfixes xcb/xfixes.h xcb_xfixes_get_cursor_image
 fi
 
-check_func_headers "windows.h" CreateDIBSection "$gdigrab_indev_extralibs"
+opt_check_func_headers "windows.h" CreateDIBSection "$gdigrab_indev_extralibs"
 
 # d3d11va requires linking directly to dxgi and d3d11 if not building for
 # the desktop api partition
@@ -6967,22 +7005,22 @@ if enabled vaapi; then
 
     check_cpp_condition vaapi_1 "va/va.h" "VA_CHECK_VERSION(1, 0, 0)"
 
-    check_type "va/va.h va/va_dec_hevc.h" "VAPictureParameterBufferHEVC"
+    opt_check_type "va/va.h va/va_dec_hevc.h" "VAPictureParameterBufferHEVC"
     check_struct "va/va.h" "VADecPictureParameterBufferVP9" bit_depth
     check_struct "va/va.h" "VADecPictureParameterBufferAV1" bit_depth_idx
-    check_type   "va/va.h va/va_vpp.h" "VAProcFilterParameterBufferHDRToneMapping"
+    opt_check_type   "va/va.h va/va_vpp.h" "VAProcFilterParameterBufferHDRToneMapping"
     check_struct "va/va.h va/va_vpp.h" "VAProcPipelineCaps" rotation_flags
     check_struct "va/va.h va/va_vpp.h" "VAProcPipelineCaps" blend_flags
-    check_type "va/va.h va/va_enc_hevc.h" "VAEncPictureParameterBufferHEVC"
-    check_type "va/va.h va/va_enc_jpeg.h" "VAEncPictureParameterBufferJPEG"
-    check_type "va/va.h va/va_enc_vp8.h"  "VAEncPictureParameterBufferVP8"
-    check_type "va/va.h va/va_enc_vp9.h"  "VAEncPictureParameterBufferVP9"
+    opt_check_type "va/va.h va/va_enc_hevc.h" "VAEncPictureParameterBufferHEVC"
+    opt_check_type "va/va.h va/va_enc_jpeg.h" "VAEncPictureParameterBufferJPEG"
+    opt_check_type "va/va.h va/va_enc_vp8.h"  "VAEncPictureParameterBufferVP8"
+    opt_check_type "va/va.h va/va_enc_vp9.h"  "VAEncPictureParameterBufferVP9"
 fi
 
 if enabled_all opencl libdrm ; then
-    check_type "CL/cl_intel.h" "clCreateImageFromFdINTEL_fn" &&
+    opt_check_type "CL/cl_intel.h" "clCreateImageFromFdINTEL_fn" &&
         enable opencl_drm_beignet
-    check_func_headers "CL/cl_ext.h" clImportMemoryARM &&
+    opt_check_func_headers "CL/cl_ext.h" clImportMemoryARM &&
         enable opencl_drm_arm
 fi
 
@@ -6990,18 +7028,18 @@ if enabled_all opencl vaapi ; then
     if enabled opencl_drm_beignet ; then
         enable opencl_vaapi_beignet
     else
-        check_type "CL/cl.h CL/cl_va_api_media_sharing_intel.h" "clCreateFromVA_APIMediaSurfaceINTEL_fn" &&
+        opt_check_type "CL/cl.h CL/cl_va_api_media_sharing_intel.h" "clCreateFromVA_APIMediaSurfaceINTEL_fn" &&
             enable opencl_vaapi_intel_media
     fi
 fi
 
 if enabled_all opencl dxva2 ; then
-    check_type "CL/cl_dx9_media_sharing.h" cl_dx9_surface_info_khr &&
+    opt_check_type "CL/cl_dx9_media_sharing.h" cl_dx9_surface_info_khr &&
         enable opencl_dxva2
 fi
 
 if enabled_all opencl d3d11va ; then
-    check_type "CL/cl_d3d11.h" clGetDeviceIDsFromD3D11KHR_fn &&
+    opt_check_type "CL/cl_d3d11.h" clGetDeviceIDsFromD3D11KHR_fn &&
         enable opencl_d3d11
 fi
 
@@ -7049,7 +7087,7 @@ int main(void) { return 0; }
 EOF
 
 if enabled_any nvdec cuvid; then
-    check_type "ffnvcodec/dynlink_cuda.h ffnvcodec/dynlink_cuviddec.h" "CUVIDAV1PICPARAMS"
+    opt_check_type "ffnvcodec/dynlink_cuda.h ffnvcodec/dynlink_cuviddec.h" "CUVIDAV1PICPARAMS"
 fi
 
 enabled amf &&
@@ -7058,9 +7096,9 @@ enabled amf &&
 
 # Funny iconv installations are not unusual, so check it after all flags have been set
 if enabled libc_iconv; then
-    check_func_headers iconv.h iconv
+    opt_check_func_headers iconv.h iconv
 elif enabled iconv; then
-    check_func_headers iconv.h iconv || check_lib iconv iconv.h iconv -liconv
+    opt_check_func_headers iconv.h iconv || check_lib iconv iconv.h iconv -liconv
 fi
 
 enabled debug && add_cflags -g"$debuglevel" && add_asflags -g"$debuglevel"
