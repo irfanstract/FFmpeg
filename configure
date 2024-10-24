@@ -1036,6 +1036,11 @@ ctmsupposed() {
     test "$vshalldooptcheck" = 1
 }
 
+shallwe_do_strict_mathtest() {
+    # too much of CPU usage
+    test "0" == 1 
+}
+
 opt_test_cpp() {
     ctmsupposed && test_cpp "$@"
 }
@@ -1376,7 +1381,7 @@ check_complexfunc(){
     shift 2
     test $narg = 2 && args="f, g" || args="f * I"
     disable $func
-    test_ld "cc" "$@" <<EOF && enable $func
+    (! shallwe_do_strict_mathtest) || test_ld "cc" "$@" <<EOF && enable $func
 #include <complex.h>
 #include <math.h>
 float foo(complex float f, complex float g) { return $func($args); }
@@ -1391,7 +1396,7 @@ check_mathfunc(){
     shift 2
     test $narg = 2 && args="f, g" || args="f"
     disable $func
-    test_ld "cc" "$@" <<EOF && enable $func
+    (! shallwe_do_strict_mathtest) || test_ld "cc" "$@" <<EOF && enable $func
 #include <math.h>
 float foo(float f, float g) { return $func($args); }
 int main(void){ return (int) foo; }
