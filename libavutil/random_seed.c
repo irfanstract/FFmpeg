@@ -26,6 +26,7 @@
 #if HAVE_IO_H
 #include <io.h>
 #endif
+#define HAVE_BCRYPT 0
 #if HAVE_BCRYPT
 #include <windows.h>
 #include <bcrypt.h>

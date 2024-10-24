@@ -156,7 +156,7 @@ void *av_realloc(void *ptr, size_t size)
     if (size > atomic_load_explicit(&max_alloc_size, memory_order_relaxed))
         return NULL;
 
-#if HAVE_ALIGNED_MALLOC
+#if 0
     ret = _aligned_realloc(ptr, size + !size, ALIGN);
 #else
     ret = realloc(ptr, size + !size);
@@ -245,7 +245,7 @@ int av_reallocp_array(void *ptr, size_t nmemb, size_t size)
 
 void av_free(void *ptr)
 {
-#if HAVE_ALIGNED_MALLOC
+#if 0
     _aligned_free(ptr);
 #else
     free(ptr);

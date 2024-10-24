@@ -6578,34 +6578,34 @@ ifnosilentpleaseecho "- Threads"
 #     fi
 # fi
 
-# check for some common methods of building with pthread support
-# do this before the optional library checks as some of them require pthreads
-if ! disabled pthreads && ! enabled w32threads && ! enabled os2threads; then
-    if check_lib pthreads pthread.h pthread_join   -pthread &&
-       check_lib pthreads pthread.h pthread_create -pthread; then
-        add_cflags -pthread
-    elif check_lib pthreads pthread.h pthread_join   -pthreads &&
-         check_lib pthreads pthread.h pthread_create -pthreads; then
-        add_cflags -pthreads
-    elif check_lib pthreads pthread.h pthread_join   -ldl -pthread &&
-         check_lib pthreads pthread.h pthread_create -ldl -pthread; then
-        add_cflags -ldl -pthread
-    elif check_lib pthreads pthread.h pthread_join   -lpthreadGC2 &&
-         check_lib pthreads pthread.h pthread_create -lpthreadGC2; then
-        :
-    elif check_lib pthreads pthread.h pthread_join   -lpthread &&
-         check_lib pthreads pthread.h pthread_create -lpthread; then
-        :
-    elif check_func pthread_join && check_func pthread_create; then
-        enable pthreads
-    fi
-    check_cc pthreads "pthread.h" "static pthread_mutex_t atomic_lock = PTHREAD_MUTEX_INITIALIZER"
+# # check for some common methods of building with pthread support
+# # do this before the optional library checks as some of them require pthreads
+# if ! disabled pthreads && ! enabled w32threads && ! enabled os2threads; then
+#     if check_lib pthreads pthread.h pthread_join   -pthread &&
+#        check_lib pthreads pthread.h pthread_create -pthread; then
+#         add_cflags -pthread
+#     elif check_lib pthreads pthread.h pthread_join   -pthreads &&
+#          check_lib pthreads pthread.h pthread_create -pthreads; then
+#         add_cflags -pthreads
+#     elif check_lib pthreads pthread.h pthread_join   -ldl -pthread &&
+#          check_lib pthreads pthread.h pthread_create -ldl -pthread; then
+#         add_cflags -ldl -pthread
+#     elif check_lib pthreads pthread.h pthread_join   -lpthreadGC2 &&
+#          check_lib pthreads pthread.h pthread_create -lpthreadGC2; then
+#         :
+#     elif check_lib pthreads pthread.h pthread_join   -lpthread &&
+#          check_lib pthreads pthread.h pthread_create -lpthread; then
+#         :
+#     elif check_func pthread_join && check_func pthread_create; then
+#         enable pthreads
+#     fi
+#     check_cc pthreads "pthread.h" "static pthread_mutex_t atomic_lock = PTHREAD_MUTEX_INITIALIZER"
 
-    if enabled pthreads; then
-        check_builtin sem_timedwait semaphore.h "sem_t *s; sem_init(s,0,0); sem_timedwait(s,0); sem_destroy(s)" $pthreads_extralibs
-        check_func pthread_cancel $pthreads_extralibs
-    fi
-fi
+#     if enabled pthreads; then
+#         check_builtin sem_timedwait semaphore.h "sem_t *s; sem_init(s,0,0); sem_timedwait(s,0); sem_destroy(s)" $pthreads_extralibs
+#         check_func pthread_cancel $pthreads_extralibs
+#     fi
+# fi
 
 ifnosilentpleaseecho "- Z && GZ"
 

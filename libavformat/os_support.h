@@ -127,7 +127,7 @@ static inline int is_dos_path(const char *path)
 #endif
 
 #if !HAVE_SOCKLEN_T
-typedef int socklen_t;
+typedef unsigned int socklen_t;
 #endif
 
 /* most of the time closing a socket is just closing an fd */
