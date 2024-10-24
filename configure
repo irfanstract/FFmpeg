@@ -4168,6 +4168,7 @@ do_random(){
 
 for opt do
     optval="${opt#*=}"
+    echo "〽️ Evaluating Opt '$opt' ($optval)"
     case "$opt" in
         --extra-ldflags=*)
             add_ldflags $optval
