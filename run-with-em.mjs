@@ -22,14 +22,25 @@ const ffoDir = "./build/ff-ranwithemcp" ;
 
 
 const files = (
+  1 ?
+  (
+    /** @type {string[]} */ (JSON.parse((
+      execFileSync("node" , ["J:\\Dev\\ff202303\\r-find-all-cpps-1.mjs", ] , {
+        shell: true,
+        stdio: ["inherit", "pipe", "inherit"] ,
+        encoding: "utf-8",
+      })
+    )))
+  )
+  :
   (/** @type {readonly String[] } */ ([
     ...(
       [
         // "libavutil/time.c",
         // "libavutil/parseutils.c",
         "fftools/opt_common.c",
-        "fftools/ffprobe.c",
-        "fftools/ffplay.c",
+        // "fftools/ffprobe.c",
+        // "fftools/ffplay.c",
         "fftools/ffmpeg_opt.c",
         "fftools/ffmpeg_mux.c",
         "fftools/ffmpeg_hw.c",
@@ -208,11 +219,31 @@ const files = (
         // "libavutil/arm/cpu.c",
         // "libavutil/aarch64/float_dsp_init.c",
         // "libavutil/aarch64/cpu.c",
+
+        (        "libavcodec/version.c"),  (        "libavcodec/utils.c"  ),               (   "libavcodec/avcodec.c"       ),
+        (       "libavdevice/version.c"),                                                  (  "libavdevice/avdevice.c"      ),
+        (       "libavformat/version.c"),                                                  (  "libavformat/avformat.c"      ),  (  "libavformat/format.c"      ),
+        (       "libavfilter/version.c"),                                                  (  "libavfilter/avfilter.c"      ),
+        (        "libswscale/version.c"),  (        "libswscale/utils.c"  ),               (   "libswscale/swscale.c"       ),
+        (     "libswresample/version.c"),                                                                                       ("libswresample/swresample.c"    ),
+        (       "libpostproc/version.c"),                                                                                       (  "libpostproc/postprocess.c"   ),
+        "libavformat/protocols.c",                                                                               
+        "libavformat/allformats.c",                                                                     
+        "libavformat/options.c",
+        "libavcodec/allcodecs.c", 
+        "libavcodec/codec_desc.c", 
+        "libavcodec/bitstream_filters.c",  
+        "libavfilter/allfilters.c",
       ]
     ) ,
     //
   ]))
 ) ;
+
+console["log"]((
+  JSON.stringify(files, null, 2 )
+  // .replace(/\s+/g, " ")
+)) ;
 
 
 // execSync(`J:\\Dev\\emsdk\\upstream\\emscripten\\emcc ${files.join(" ") } -o ${ffoDir }/ffmpeg.js -sWASM=0 -std=c99 -I .\\ffbuildSubstituteHeaders -I . -I ./fftools -I ./libavutil -I ./libavfilter -I ./libavdevice -I ./libavformat -I ./libavcodec -sNODERAWFS -D_ISOC99_SOURCE -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U__STRICT_ANSI__ -D__USE_MINGW_ANSI_STDIO=1 -D__printf__=__gnu_printf__ -D_POSIX_C_SOURCE=200112 -D_XOPEN_SOURCE=600 -DPIC`) ;
