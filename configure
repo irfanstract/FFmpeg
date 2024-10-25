@@ -6289,7 +6289,7 @@ if ! disabled network; then
 
     ifnosilentpleaseecho "- - inetlibtypes"
 
-    opt_check_type netdb.h "struct addrinfo"
+    check_type netdb.h "struct addrinfo"
     opt_check_type netinet/in.h "struct group_source_req" -D_BSD_SOURCE
     opt_check_type netinet/in.h "struct ip_mreq_source" -D_BSD_SOURCE
     opt_check_type netinet/in.h "struct ipv6_mreq" -D_DARWIN_C_SOURCE
@@ -6297,9 +6297,9 @@ if ! disabled network; then
     opt_check_type netinet/sctp.h "struct sctp_event_subscribe"
     check_struct "sys/socket.h" "struct msghdr" msg_flags
     check_struct "sys/types.h sys/socket.h" "struct sockaddr" sa_len
-    opt_check_type netinet/in.h "struct sockaddr_in6"
-    opt_check_type "sys/types.h sys/socket.h" "struct sockaddr_storage"
-    opt_check_type "sys/types.h sys/socket.h" socklen_t
+    check_type netinet/in.h "struct sockaddr_in6"
+    check_type "sys/types.h sys/socket.h" "struct sockaddr_storage"
+    check_type "sys/types.h sys/socket.h" socklen_t
 
 #     ifnosilentpleaseecho "- - arpa_ineth"
 
@@ -6329,35 +6329,35 @@ fi
 
 # ifnosilentpleaseecho "- atomics"
 
-# check_builtin atomic_cas_ptr atomic.h "void **ptr; void *oldval, *newval; atomic_cas_ptr(ptr, oldval, newval)"
-# check_builtin machine_rw_barrier mbarrier.h "__machine_rw_barrier()"
-# check_builtin MemoryBarrier windows.h "MemoryBarrier()"
-# check_builtin sync_val_compare_and_swap "" "int *ptr; int oldval, newval; __sync_val_compare_and_swap(ptr, oldval, newval)"
-# check_builtin gmtime_r time.h "time_t *time; struct tm *tm; gmtime_r(time, tm)"
-# check_builtin localtime_r time.h "time_t *time; struct tm *tm; localtime_r(time, tm)"
+check_builtin atomic_cas_ptr atomic.h "void **ptr; void *oldval, *newval; atomic_cas_ptr(ptr, oldval, newval)"
+check_builtin machine_rw_barrier mbarrier.h "__machine_rw_barrier()"
+check_builtin MemoryBarrier windows.h "MemoryBarrier()"
+check_builtin sync_val_compare_and_swap "" "int *ptr; int oldval, newval; __sync_val_compare_and_swap(ptr, oldval, newval)"
+check_builtin gmtime_r time.h "time_t *time; struct tm *tm; gmtime_r(time, tm)"
+check_builtin localtime_r time.h "time_t *time; struct tm *tm; localtime_r(time, tm)"
 
 # ifnosilentpleaseecho "- memorymgmt"
 
-# case "$custom_allocator" in
-#     jemalloc)
-#         # jemalloc by default does not use a prefix
-#         require libjemalloc jemalloc/jemalloc.h malloc -ljemalloc
-#     ;;
-#     tcmalloc)
-#         require_pkg_config libtcmalloc libtcmalloc gperftools/tcmalloc.h tc_malloc
-#         malloc_prefix=tc_
-#     ;;
-# esac
+case "$custom_allocator" in
+    jemalloc)
+        # jemalloc by default does not use a prefix
+        require libjemalloc jemalloc/jemalloc.h malloc -ljemalloc
+    ;;
+    tcmalloc)
+        require_pkg_config libtcmalloc libtcmalloc gperftools/tcmalloc.h tc_malloc
+        malloc_prefix=tc_
+    ;;
+esac
 
-# opt_check_func_headers malloc.h _aligned_malloc     && enable aligned_malloc
-# check_func  ${malloc_prefix}memalign            && enable memalign
-# check_func  ${malloc_prefix}posix_memalign      && enable posix_memalign
+opt_check_func_headers malloc.h _aligned_malloc     && enable aligned_malloc
+check_func  ${malloc_prefix}memalign            && enable memalign
+check_func  ${malloc_prefix}posix_memalign      && enable posix_memalign
 
-# ifnosilentpleaseecho "- POSIX proc common"
+ifnosilentpleaseecho "- POSIX proc common"
 
 # check_func  access
 # opt_check_func_headers stdlib.h arc4random
-# check_lib   clock_gettime time.h clock_gettime || check_lib clock_gettime time.h clock_gettime -lrt
+check_lib   clock_gettime time.h clock_gettime || check_lib clock_gettime time.h clock_gettime -lrt
 # check_func  fcntl
 # check_func  fork
 # check_func  gethrtime
@@ -6378,15 +6378,17 @@ fi
 # check_func  sysctl
 # check_func  usleep
 
-# ifnosilentpleaseecho "- WIN32"
+ifnosilentpleaseecho "- StdLibDotH and GETENV"
 
 # ctmsupposed && opt_check_func_headers conio.h kbhit
 # ctmsupposed && opt_check_func_headers io.h setmode
 # ctmsupposed && opt_check_func_headers lzo/lzo1x.h lzo1x_999_compress
 # ctmsupposed && opt_check_func_headers mach/mach_time.h mach_absolute_time
-# ctmsupposed && opt_check_func_headers stdlib.h getenv
+check_func_headers stdlib.h getenv
 # ctmsupposed && opt_check_func_headers sys/stat.h lstat
 # ctmsupposed && opt_check_func_headers sys/auxv.h getauxval
+
+ifnosilentpleaseecho "- WIN32"
 
 # ctmsupposed && opt_check_func_headers windows.h GetModuleHandle
 # ctmsupposed && opt_check_func_headers windows.h GetProcessAffinityMask
@@ -6430,7 +6432,7 @@ fi
 
 # opt_check_headers linux/perf_event.h
 # opt_check_headers libcrystalhd/libcrystalhd_if.h
-# opt_check_headers malloc.h
+check_headers malloc.h
 # opt_check_headers mftransform.h
 # opt_check_headers net/udplite.h
 # opt_check_headers poll.h
@@ -6440,7 +6442,7 @@ fi
 # opt_check_headers sys/time.h
 # opt_check_headers sys/un.h
 # opt_check_headers termios.h
-# opt_check_headers unistd.h
+check_headers unistd.h
 # opt_check_headers valgrind/valgrind.h
 # opt_check_func_headers VideoToolbox/VTCompressionSession.h VTCompressionSessionPrepareToEncodeFrames -framework VideoToolbox
 # opt_check_headers windows.h
@@ -6562,7 +6564,7 @@ fi
 
 # check_cpp_condition winrt windows.h "!WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)"
 
-# ifnosilentpleaseecho "- Threads"
+ifnosilentpleaseecho "- Threads"
 
 # if ! disabled w32threads && ! enabled pthreads; then
 #     opt_check_func_headers "windows.h process.h" _beginthreadex &&
@@ -6575,41 +6577,41 @@ fi
 #     fi
 # fi
 
-# # check for some common methods of building with pthread support
-# # do this before the optional library checks as some of them require pthreads
-# if ! disabled pthreads && ! enabled w32threads && ! enabled os2threads; then
-#     if check_lib pthreads pthread.h pthread_join   -pthread &&
-#        check_lib pthreads pthread.h pthread_create -pthread; then
-#         add_cflags -pthread
-#     elif check_lib pthreads pthread.h pthread_join   -pthreads &&
-#          check_lib pthreads pthread.h pthread_create -pthreads; then
-#         add_cflags -pthreads
-#     elif check_lib pthreads pthread.h pthread_join   -ldl -pthread &&
-#          check_lib pthreads pthread.h pthread_create -ldl -pthread; then
-#         add_cflags -ldl -pthread
-#     elif check_lib pthreads pthread.h pthread_join   -lpthreadGC2 &&
-#          check_lib pthreads pthread.h pthread_create -lpthreadGC2; then
-#         :
-#     elif check_lib pthreads pthread.h pthread_join   -lpthread &&
-#          check_lib pthreads pthread.h pthread_create -lpthread; then
-#         :
-#     elif check_func pthread_join && check_func pthread_create; then
-#         enable pthreads
-#     fi
-#     check_cc pthreads "pthread.h" "static pthread_mutex_t atomic_lock = PTHREAD_MUTEX_INITIALIZER"
+# check for some common methods of building with pthread support
+# do this before the optional library checks as some of them require pthreads
+if ! disabled pthreads && ! enabled w32threads && ! enabled os2threads; then
+    if check_lib pthreads pthread.h pthread_join   -pthread &&
+       check_lib pthreads pthread.h pthread_create -pthread; then
+        add_cflags -pthread
+    elif check_lib pthreads pthread.h pthread_join   -pthreads &&
+         check_lib pthreads pthread.h pthread_create -pthreads; then
+        add_cflags -pthreads
+    elif check_lib pthreads pthread.h pthread_join   -ldl -pthread &&
+         check_lib pthreads pthread.h pthread_create -ldl -pthread; then
+        add_cflags -ldl -pthread
+    elif check_lib pthreads pthread.h pthread_join   -lpthreadGC2 &&
+         check_lib pthreads pthread.h pthread_create -lpthreadGC2; then
+        :
+    elif check_lib pthreads pthread.h pthread_join   -lpthread &&
+         check_lib pthreads pthread.h pthread_create -lpthread; then
+        :
+    elif check_func pthread_join && check_func pthread_create; then
+        enable pthreads
+    fi
+    check_cc pthreads "pthread.h" "static pthread_mutex_t atomic_lock = PTHREAD_MUTEX_INITIALIZER"
 
-#     if enabled pthreads; then
-#         check_builtin sem_timedwait semaphore.h "sem_t *s; sem_init(s,0,0); sem_timedwait(s,0); sem_destroy(s)" $pthreads_extralibs
-#         check_func pthread_cancel $pthreads_extralibs
-#     fi
-# fi
+    if enabled pthreads; then
+        check_builtin sem_timedwait semaphore.h "sem_t *s; sem_init(s,0,0); sem_timedwait(s,0); sem_destroy(s)" $pthreads_extralibs
+        check_func pthread_cancel $pthreads_extralibs
+    fi
+fi
 
-# ifnosilentpleaseecho "- Z && GZ"
+ifnosilentpleaseecho "- Z && GZ"
 
-# enabled  zlib && { check_pkg_config zlib zlib "zlib.h" zlibVersion ||
-#                    check_lib zlib   zlib.h      zlibVersion    -lz; }
-# enabled bzlib && check_lib bzlib bzlib.h BZ2_bzlibVersion    -lbz2
-# enabled  lzma && check_lib lzma   lzma.h lzma_version_number -llzma
+enabled  zlib && { check_pkg_config zlib zlib "zlib.h" zlibVersion ||
+                   check_lib zlib   zlib.h      zlibVersion    -lz; }
+enabled bzlib && check_lib bzlib bzlib.h BZ2_bzlibVersion    -lbz2
+enabled  lzma && check_lib lzma   lzma.h lzma_version_number -llzma
 
 # enabled zlib && test_exec $zlib_extralibs <<EOF && enable zlib_gzip
 # #include <zlib.h>
