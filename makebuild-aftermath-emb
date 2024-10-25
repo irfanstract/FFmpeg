@@ -1,0 +1,143 @@
+#!/bin/sh
+#
+
+
+
+
+
+
+
+
+
+# PATH="/ucrt64/bin:/usr/local/bin:/usr/bin:/bin:/c/Windows/System32:/c/Windows:/c/Windows/System32/Wbem:/c/Windows/System32/WindowsPowerShell/v1.0/:/usr/bin/site_perl:/usr/bin/vendor_perl:/usr/bin/core_perl"
+# PATH="/j/Dev/emsdk/upstream/emscripten:$PATH"
+PATH="$("$(dirname -- "${BASH_SOURCE[0]}" )/with-emsdk" )"
+
+echo "[info] PATH=$PATH "
+
+
+
+# since the current scriptfile can be referenced from anywhere,
+# we'll need to qualify/prefix the SH names with '${BASH_SOURCE[0]}" )', or instead
+# switch WD to this dir
+
+cd "$(dirname -- "${BASH_SOURCE[0]}" )"
+
+
+
+
+
+
+# see https://github.com/ffmpegwasm/ffmpeg.wasm/blob/7fe8dff16043e86fa129c84acaca271b8a19bec4/build/ffmpeg-wasm.sh#L4 
+
+libsFlags=(
+  # 
+  # https://github.com/ffmpegwasm/ffmpeg.wasm/blob/7fe8dff16043e86fa129c84acaca271b8a19bec4/build/ffmpeg-wasm.sh#L10C13-L30C13
+  -I. 
+  -I./fftools 
+  # -I$INSTALL_DIR/include 
+  # -L$INSTALL_DIR/lib 
+  -Llibavcodec 
+  -Llibavdevice 
+  -Llibavfilter 
+  -Llibavformat 
+  -Llibavutil 
+  -Llibpostproc 
+  -Llibswresample 
+  -Llibswscale 
+  -lavcodec 
+  -lavdevice 
+  -lavfilter 
+  -lavformat 
+  -lavutil 
+  # -lpostproc 
+  -lswresample 
+  -lswscale 
+)
+
+echo "✅ libsFlags: ${libsFlags[@]}"
+
+entryptsFlags=(
+  # 
+  # https://github.com/ffmpegwasm/ffmpeg.wasm/blob/7fe8dff16043e86fa129c84acaca271b8a19bec4/build/ffmpeg-wasm.sh#L44 
+  # fftools src code
+  fftools/cmdutils.c 
+  fftools/ffmpeg_filter.c 
+  fftools/ffmpeg_hw.c 
+  fftools/ffmpeg_mux.c 
+  fftools/ffmpeg_opt.c 
+  fftools/opt_common.c 
+  # ffmpeg source code
+  fftools/ffmpeg.c 
+)
+
+echo "✅ entryptsFlags: ${entryptsFlags[@]}"
+
+confFlags=(
+  # 
+
+  ${libsFlags[@]}
+
+  # Compiler Options
+  # based on https://github.com/ffmpegwasm/ffmpeg.wasm/blob/7fe8dff16043e86fa129c84acaca271b8a19bec4/build/ffmpeg-wasm.sh#L31 with chgs
+  -Wno-deprecated-declarations 
+  -O0
+  $LDFLAGS 
+  # -sWASM=0
+  -sWASM_BIGINT                            # enable big int support
+  -sUSE_SDL=2                              # use emscripten SDL2 lib port
+  # -sMODULARIZE                          # modularized to use as a library
+  ${FFMPEG_MT:+ -sINITIAL_MEMORY=1024MB}   # ALLOW_MEMORY_GROWTH is not recommended when using threads, thus we use a large initial memory
+  ${FFMPEG_MT:+ -sPTHREAD_POOL_SIZE=32}    # use 32 threads
+  ${FFMPEG_ST:+ -sINITIAL_MEMORY=32MB -sALLOW_MEMORY_GROWTH} # Use just enough memory as memory usage can grow
+  # -sEXPORT_NAME="$EXPORT_NAME"             # required in browser env, so that user can access this module from window object
+  # -sEXPORTED_FUNCTIONS=$(node src/bind/ffmpeg/export.js) # exported functions
+  # -sEXPORTED_RUNTIME_METHODS=$(node src/bind/ffmpeg/export-runtime.js) # exported built-in functions
+  # -lworkerfs.js
+  # --pre-js src/bind/ffmpeg/bind.js        # extra bindings, contains most of the ffmpeg.wasm javascript code
+  -sNODERAWFS
+  --pre-js wasmmaemb/prel.js     # wasmmaemb\prel.js
+
+  ${entryptsFlags[@]}
+
+  -o ./build/ff-ranwithemcp/ffmpeg.js
+
+)
+
+echo "✅ confFlags: ${confFlags[@]}"
+
+
+echo "✅ running emcc ${confFlags[@]}"
+
+emcc "${confFlags[@]}"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
