@@ -83,7 +83,7 @@ int avpriv_open(const char *filename, int flags, ...)
     flags |= O_NOINHERIT;
 #endif
 
-    av_log(NULL, AV_LOG_VERBOSE, "opening file: '%s' (flags: '%d') \n" , filename, flags ) ;
+    av_log(NULL, AV_LOG_VERBOSE, "opening file: '%s' (flags: '%p') \n" , filename, flags ) ;
 
     const char *fnm1 = filename ;
     av_strstart(filename, "///", &fnm1);
