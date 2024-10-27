@@ -63,6 +63,8 @@ fallback:
 #define open win32_open
 #endif
 
+#include <libavutil/avstring.h>
+
 int avpriv_open(const char *filename, int flags, ...)
 {
     int fd;
@@ -81,7 +83,13 @@ int avpriv_open(const char *filename, int flags, ...)
     flags |= O_NOINHERIT;
 #endif
 
-    fd = open(filename, flags, mode);
+    av_log(NULL, AV_LOG_VERBOSE, "opening file: '%s' (flags: '%d') \n" , filename, flags ) ;
+
+    const char *fnm1 = filename ;
+    av_strstart(filename, "///", &fnm1);
+    av_log(NULL, AV_LOG_VERBOSE, "(normalized to '%s') \n" , fnm1 ) ;
+
+    fd = open(fnm1, flags, mode);
 #if HAVE_FCNTL
     if (fd != -1) {
         if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
