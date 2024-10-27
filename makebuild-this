@@ -36,6 +36,10 @@ make
 
 
 
+node ./build/ff-ranwithemcp/ffmpeg.js -loglevel verbose -f lavfi -i testsrc2=duration=5.1 -f null -c:v rawvideo myvideo
+
+
+
 
 
 
