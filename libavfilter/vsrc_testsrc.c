@@ -1995,7 +1995,7 @@ static void colorchart_fill_picture(AVFilterContext *ctx, AVFrame *frame)
             uint32_t pc = AV_RB24(colorchart_presets[preset].colors[y * w + x]);
             FFDrawColor color;
 
-            // set_color(test, &color, pc);
+            set_color(test, &color, pc);
             ff_fill_rectangle(&test->draw, &color, frame->data, frame->linesize,
                               x * pw, y * ph, pw, ph);
         }
