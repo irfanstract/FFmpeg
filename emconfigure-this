@@ -33,7 +33,34 @@ PATH="/ucrt64/bin:/usr/local/bin:/usr/bin:/bin:/c/Windows/System32:/c/Windows:/c
 PATH="/j/Dev/emsdk/upstream/emscripten:$PATH"
 
 # configure FFMpeg with Emscripten
-CFLAGS="-s USE_PTHREADS"  # a dependency 
+
+# to assign toolchains and extra flags
+bincompatCcFlags="    -s LINKABLE -s RELOCATABLE -s SIDE_MODULE "  # a dependency 
+systemDepsCcFlags="   -s USE_PTHREADS" # a dependency 
+CFLAGS="     ${CFLAGS[@]}        $bincompatCcFlags $systemDepsCcFlags"  # a dependency 
+CXXFLAGS="   ${CXXFLAGS[@]}      $bincompatCcFlags $systemDepsCcFlags"  # a dependency 
+LDFLAGS="    ${LDFLAGS[@]}       $bincompatCcFlags      "  # a dependency 
+toolchainSpecifyingArgs=(
+  # 
+  --nm=emnm
+  --ar=emar
+  --ranlib=emranlib
+  --cc=emcc
+  --cxx=em++
+  --objcc=emcc
+  --dep-cc=emcc
+
+  # 
+  # https://stackoverflow.com/questions/13812185/how-to-recompile-with-fpic 
+  --enable-shared
+  --enable-pic
+
+)
+echo "CFLAGS: ${CFLAGS[@]} "
+echo "CXXFLAGS: ${CXXFLAGS[@]} "
+echo "LDFLAGS: ${LDFLAGS[@]} "
+echo "toolchainSpecifyingArgs: ${toolchainSpecifyingArgs[@]} "
+
 flags=(
   --target-os=none        # use none to prevent any os specific configurations
   --enable-cross-compile  # enable cross compile
@@ -49,22 +76,14 @@ flags=(
   --disable-autodetect          # disable env auto detect
 
   # assign toolchains and extra flags
-  --nm=emnm
-  --ar=emar
-  --ranlib=emranlib
-  --cc=emcc
-  --cxx=em++
-  --objcc=emcc
-  --dep-cc=emcc
+  ${toolchainSpecifyingArgs[@]}
   --extra-cflags="$CFLAGS"
   --extra-cxxflags="$CXXFLAGS"
+  --extra-ldflags="$LDFLAGS"
+  --extra-ldsoflags="$LDFLAGS"
 
   # disable thread when FFMPEG_ST is NOT defined
   ${FFMPEG_ST:+ --disable-pthreads --disable-w32threads --disable-os2threads}
-
-  # https://stackoverflow.com/questions/13812185/how-to-recompile-with-fpic 
-  --enable-shared
-  --enable-pic
 
   # disable a large number of those less-used codecs
   # we'll eventally reenable some them progressively
