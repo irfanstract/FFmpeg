@@ -4332,6 +4332,7 @@ static int transcode(void)
     InputStream *ist;
     int64_t timer_start;
     int64_t total_packets_written = 0;
+    av_log(NULL, AV_LOG_VERBOSE, "FFConv Loop Started\n");
 
     ret = transcode_init();
     if (ret < 0)

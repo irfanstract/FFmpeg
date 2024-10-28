@@ -51,3 +51,13 @@ temp-rebase-todo.sh
 libavutil/comer.h
 2023040722.txt
 git-checkout-and-merge-wasmbuildffmpegsh.cmd
+
+
+
+# !lib*/lib*.a
+# !lib*/lib*.so*
+# !lib*/lib*.pc
+# !lib*/lib*.v
+# !lib*/lib*.ver*
+
+
