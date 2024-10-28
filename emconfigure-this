@@ -35,14 +35,7 @@ PATH="/j/Dev/emsdk/upstream/emscripten:$PATH"
 # configure FFMpeg with Emscripten
 
 # to assign toolchains and extra flags
-bincompatCcFlags="    -s LINKABLE -s RELOCATABLE -s SIDE_MODULE "  # a dependency 
-# systemDepsCcFlags="   -s USE_PTHREADS" # a dependency 
-systemDepsCcFlags="   " # a dependency 
-rtInitialsFlags=" -s INITIAL_MEMORY=33554432 "
-CFLAGS="     ${CFLAGS[@]}        $bincompatCcFlags $systemDepsCcFlags"  # a dependency 
-CXXFLAGS="   ${CXXFLAGS[@]}      $bincompatCcFlags $systemDepsCcFlags"  # a dependency 
-LDFLAGS="    ${LDFLAGS[@]}  ${CFLAGS[@]}  $bincompatCcFlags  -fPIC  $rtInitialsFlags   "  # a dependency 
-toolchainSpecifyingArgs=(
+toolchainSelectingArgs=(
   # 
   --nm=emnm
   --ar=emar
@@ -58,11 +51,22 @@ toolchainSpecifyingArgs=(
   --enable-pic
 
 )
+# the glag '-fPIC' seema be ignored for WASM targets (presently); there's also offered LD option '--experimental-pic' (on 'wasm-ld')
+bincompatClrFlags="    -s LINKABLE -s RELOCATABLE -s SIDE_MODULE -fPIC -Wl,--experimental-pic  "  # a dependency 
+bincompatCcFlags=" ${bincompatClrFlags[@]}  "
+# systemDepsCcFlags="   -s USE_PTHREADS" # a dependency 
+systemDepsCcFlags="   " # a dependency 
+rtInitialsFlags=" -s INITIAL_MEMORY=33554432 "
+# TODO extend to Obj-C and Obj-C++ 
+CFLAGS="     ${CFLAGS[@]}        $bincompatCcFlags $systemDepsCcFlags"  # a dependency 
+CXXFLAGS="   ${CXXFLAGS[@]}      $bincompatCcFlags $systemDepsCcFlags"  # a dependency 
+# as LDFLAGS. for some reason, LD became 'emcc' which is CC.
+LDFLAGS="    ${LDFLAGS[@]}  ${CFLAGS[@]}  $bincompatClrFlags  -fPIC  $rtInitialsFlags     -Wl,--error-limit=270  "  # a dependency 
 echo "CFLAGS: ${CFLAGS[@]} "
 echo "CXXFLAGS: ${CXXFLAGS[@]} "
 echo "LDFLAGS: ${LDFLAGS[@]} "
 # LDFLAGS="$CFLAGS -fPIC -s INITIAL_MEMORY=33554432" # 33554432 bytes = 32 MB
-echo "toolchainSpecifyingArgs: ${toolchainSpecifyingArgs[@]} "
+echo "toolchainSelectingArgs: ${toolchainSelectingArgs[@]} "
 
 flags=(
   --target-os=none        # use none to prevent any os specific configurations
@@ -79,7 +83,7 @@ flags=(
   --disable-autodetect          # disable env auto detect
 
   # assign toolchains and extra flags
-  ${toolchainSpecifyingArgs[@]}
+  ${toolchainSelectingArgs[@]}
   --extra-cflags="$CFLAGS"
   --extra-cxxflags="$CXXFLAGS"
   --extra-ldflags="$LDFLAGS"
