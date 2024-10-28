@@ -36,10 +36,12 @@ PATH="/j/Dev/emsdk/upstream/emscripten:$PATH"
 
 # to assign toolchains and extra flags
 bincompatCcFlags="    -s LINKABLE -s RELOCATABLE -s SIDE_MODULE "  # a dependency 
-systemDepsCcFlags="   -s USE_PTHREADS" # a dependency 
+# systemDepsCcFlags="   -s USE_PTHREADS" # a dependency 
+systemDepsCcFlags="   " # a dependency 
+rtInitialsFlags=" -s INITIAL_MEMORY=33554432 "
 CFLAGS="     ${CFLAGS[@]}        $bincompatCcFlags $systemDepsCcFlags"  # a dependency 
 CXXFLAGS="   ${CXXFLAGS[@]}      $bincompatCcFlags $systemDepsCcFlags"  # a dependency 
-LDFLAGS="    ${LDFLAGS[@]}       $bincompatCcFlags      "  # a dependency 
+LDFLAGS="    ${LDFLAGS[@]}  ${CFLAGS[@]}  $bincompatCcFlags  -fPIC  $rtInitialsFlags   "  # a dependency 
 toolchainSpecifyingArgs=(
   # 
   --nm=emnm
@@ -59,6 +61,7 @@ toolchainSpecifyingArgs=(
 echo "CFLAGS: ${CFLAGS[@]} "
 echo "CXXFLAGS: ${CXXFLAGS[@]} "
 echo "LDFLAGS: ${LDFLAGS[@]} "
+# LDFLAGS="$CFLAGS -fPIC -s INITIAL_MEMORY=33554432" # 33554432 bytes = 32 MB
 echo "toolchainSpecifyingArgs: ${toolchainSpecifyingArgs[@]} "
 
 flags=(
@@ -785,7 +788,8 @@ flags=(
   --enable-filter=yuvtestsrc       
   --enable-filter=zoompan          
 )
-LDFLAGS="$CFLAGS -s INITIAL_MEMORY=33554432" # 33554432 bytes = 32 MB
+test "0" = "1" && echo "flags:" ${flags[@]}
+test "0" = "1" && exit 1
 
 # now direct to the main thing
 x_configureshfile="$(dirname -- "${BASH_SOURCE[0]}" )/configure"
