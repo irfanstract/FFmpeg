@@ -22,14 +22,14 @@ PATH="$("$(dirname -- "${BASH_SOURCE[0]}" )/with-emsdk" )"
 
 cd "$(dirname -- "${BASH_SOURCE[0]}" )"
 
-make
+{ make ; } || { echo "'make' failed; exiting early " ; exit 1 ; }
 
 
 
 
 
 
-./makebuild-aftermath-emb
+{ ./makebuild-aftermath-emb ; } || { echo "'./makebuild-aftermath-emb' failed; exiting early " ; exit 1 ; }
 
 
 

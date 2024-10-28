@@ -73,7 +73,7 @@ entryptsFlags=(
 
 echo "✅ entryptsFlags: ${entryptsFlags[@]}"
 
-confFlags=(
+sharedConfFlags=(
   # 
 
   ${libsFlags[@]}
@@ -90,26 +90,109 @@ confFlags=(
   ${FFMPEG_MT:+ -sINITIAL_MEMORY=1024MB}   # ALLOW_MEMORY_GROWTH is not recommended when using threads, thus we use a large initial memory
   ${FFMPEG_MT:+ -sPTHREAD_POOL_SIZE=32}    # use 32 threads
   ${FFMPEG_ST:+ -sINITIAL_MEMORY=32MB -sALLOW_MEMORY_GROWTH} # Use just enough memory as memory usage can grow
+
+)
+
+# see also https://emscripten.org/docs/compiling/Dynamic-Linking.html (https://emscripten.org/docs/compiling/Dynamic-Linking.html#load-time-dynamic-linking ) .
+
+ffConvAppBinPath="./build/ff-ranwithemcp/ffmpeg.js"
+
+ffConvAppBuiltDefaultStaticBuildConfFlags=(
+  #
+
+  ${sharedConfFlags[@]}
+
   # -sEXPORT_NAME="$EXPORT_NAME"             # required in browser env, so that user can access this module from window object
   # -sEXPORTED_FUNCTIONS=$(node src/bind/ffmpeg/export.js) # exported functions
   # -sEXPORTED_RUNTIME_METHODS=$(node src/bind/ffmpeg/export-runtime.js) # exported built-in functions
   # -lworkerfs.js
   # --pre-js src/bind/ffmpeg/bind.js        # extra bindings, contains most of the ffmpeg.wasm javascript code
-  -sNODERAWFS
-  --pre-js wasmmaemb/prel.js     # wasmmaemb\prel.js
+  -sNODERAWFS # for now we directly link those to 'node:fs'; we're leaving the polyfilling job to custom Webpack configs
+  --pre-js    wasmmaemb/prel.js     # wasmmaemb\prel.js
+  --post-js   wasmmaemb/postel.js   
 
   ${entryptsFlags[@]}
 
-  -o ./build/ff-ranwithemcp/ffmpeg.js
+  -o "$ffConvAppBinPath"
 
 )
 
-echo "✅ confFlags: ${confFlags[@]}"
+# first have look at https://emscripten.org/docs/compiling/Dynamic-Linking.html#load-time-dynamic-linking .
 
+if test "1" == "1"; then
+  # 
+  
+  ffEngineAppBinPathJs="./build/ff-ranwithemcp/ffe.js"
+  ffEngineAppBinPathWm="./build/ff-ranwithemcp/ffe.wasm"
 
-echo "✅ running emcc ${confFlags[@]}"
+  ffConvAppBuildConfFlags=(
+    #
 
-emcc "${confFlags[@]}"
+    ${ffConvAppBuiltDefaultStaticBuildConfFlags[@]}
+
+    # https://emscripten.org/docs/compiling/Dynamic-Linking.html#load-time-dynamic-linking .
+    -sMAIN_MODULE
+    "$ffEngineAppBinPathWm"
+
+  )
+
+  ffCompleteEngineBuildConfFlags=(
+    #
+
+    ${sharedConfFlags[@]}
+
+    ${entryptsFlags[@]}
+
+    -o "$ffEngineAppBinPathJs"
+    -sSIDE_MODULE
+
+    # -ferror-limit=60
+
+  )
+
+  # building the complete-engine and then the entry-point
+  {
+
+    # building the complete-engine
+    {
+      confFlags=( ${ffCompleteEngineBuildConfFlags[@]} )
+      echo "✅ confFlags: ${confFlags[@]}"
+
+      echo "✅ running emcc ${confFlags[@]}"
+      emcc "${confFlags[@]}"
+    } || exit 1
+
+    # building the entry-point
+    {
+      confFlags=( ${ffConvAppBuildConfFlags[@]} )
+      echo "✅ confFlags: ${confFlags[@]}"
+
+      echo "✅ running emcc ${confFlags[@]}"
+      emcc "${confFlags[@]}"
+    } || exit 1
+  }
+
+else
+  # 
+
+  ffConvAppBuildConfFlags=(
+    #
+
+    ${ffConvAppBuiltDefaultStaticBuildConfFlags[@]}
+
+  )
+
+  # 
+  # building the entry-point
+  {
+    confFlags=( ${ffConvAppBuildConfFlags[@]} )
+    echo "✅ confFlags: ${confFlags[@]}"
+
+    echo "✅ running emcc ${confFlags[@]}"
+    emcc "${confFlags[@]}"
+  } || exit 1
+
+fi
 
 
 
