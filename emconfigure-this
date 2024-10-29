@@ -35,6 +35,9 @@ PATH="/j/Dev/emsdk/upstream/emscripten:$PATH"
 # configure FFMpeg with Emscripten
 
 # to assign toolchains and extra flags
+# see also
+# https://github.com/emscripten-core/emscripten/issues/14408 ..
+# https://github.com/emscripten-core/emscripten/issues/11985 ..
 toolchainSelectingArgs=(
   # 
   --nm=emnm
