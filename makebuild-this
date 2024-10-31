@@ -18,7 +18,7 @@
 
 # PATH="/ucrt64/bin:/usr/local/bin:/usr/bin:/bin:/c/Windows/System32:/c/Windows:/c/Windows/System32/Wbem:/c/Windows/System32/WindowsPowerShell/v1.0/:/usr/bin/site_perl:/usr/bin/vendor_perl:/usr/bin/core_perl"
 # PATH="/j/Dev/emsdk/upstream/emscripten:$PATH"
-PATH="$("$(dirname -- "${BASH_SOURCE[0]}" )/with-emsdk" )"
+PATH="$("$(dirname -- "${BASH_SOURCE[0]}" )/with-emsdk" ):$PATH"
 
 cd "$(dirname -- "${BASH_SOURCE[0]}" )"
 
@@ -36,7 +36,7 @@ cd "$(dirname -- "${BASH_SOURCE[0]}" )"
 
 
 
-node ./build/ff-ranwithemcp/ffmpeg.js -loglevel verbose -f lavfi -i testsrc2=duration=5.1 -f null -c:v rawvideo myvideo
+PATH="/c/Users/62857/X-Dev-Runtimes/node-v20.11.1-win-x64:$PATH"
 
 
 

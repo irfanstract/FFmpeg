@@ -12,6 +12,7 @@
 # PATH="/ucrt64/bin:/usr/local/bin:/usr/bin:/bin:/c/Windows/System32:/c/Windows:/c/Windows/System32/Wbem:/c/Windows/System32/WindowsPowerShell/v1.0/:/usr/bin/site_perl:/usr/bin/vendor_perl:/usr/bin/core_perl"
 # PATH="/j/Dev/emsdk/upstream/emscripten:$PATH"
 PATH="$("$(dirname -- "${BASH_SOURCE[0]}" )/with-emsdk" )"
+# PATH="/j/Dev/emsdk/python/3.9.2-nuget_64bit:$PATH"
 
 echo "[info] PATH=$PATH "
 
@@ -242,6 +243,16 @@ fi
 
 
 
+
+
+
+
+PATH="/c/Users/62857/X-Dev-Runtimes/node-v20.11.1-win-x64:$PATH"
+
+{ node ./build/ff-ranwithemcp/ffmpeg.js -loglevel verbose -f lavfi -i testsrc2=duration=5.1 -f null -c:v rawvideo myvideo ; } || exit 1
+
+{ exit 0 ; }
+{ node ./test1.mjs ; exit 0 ; }
 
 
 
