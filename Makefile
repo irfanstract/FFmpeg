@@ -77,6 +77,7 @@ tools/target_dem_%_fuzzer$(EXESUF): $(FF_DEP_LIBS)
 
 CONFIGURABLE_COMPONENTS =                                           \
     $(wildcard $(FFLIBS:%=$(SRC_PATH)/lib%/all*.c))                 \
+    $(wildcard $(FFLIBS:%=$(SRC_PATH)/lib%/all*.cpp))                 \
     $(SRC_PATH)/libavcodec/bitstream_filters.c                      \
     $(SRC_PATH)/libavcodec/hwaccels.h                               \
     $(SRC_PATH)/libavcodec/parsers.c                                \
