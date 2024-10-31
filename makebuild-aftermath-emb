@@ -45,14 +45,25 @@ libsFlags=(
   -Llibpostproc 
   -Llibswresample 
   -Llibswscale 
-  -lavcodec 
-  -lavdevice 
-  -lavfilter 
-  -lavformat 
-  -lavutil 
-  # -lpostproc 
-  -lswresample 
-  -lswscale 
+  # -lavcodec 
+  # -lavdevice 
+  # -lavfilter 
+  # -lavformat 
+  # -lavutil 
+  # # -lpostproc 
+  # -lswresample 
+  # -lswscale 
+  # heads to the '.so' files which essentally
+  libavcodec/libavcodec.so 
+  libavdevice/libavdevice.so 
+  libavfilter/libavfilter.so 
+  libavformat/libavformat.so 
+  libavutil/libavutil.so 
+  # libpostproc/libpostproc.so 
+  libswresample/libswresample.so 
+  libswscale/libswscale.so 
+  -sMAIN_MODULE
+  -sERROR_ON_UNDEFINED_SYMBOLS=0
 )
 
 echo "✅ libsFlags: ${libsFlags[@]}"
@@ -90,6 +101,8 @@ sharedConfFlags=(
   -sEXPORTED_RUNTIME_METHODS=ccall,cwrap
   -sDISABLE_EXCEPTION_CATCHING=0
   -sLINKABLE
+  -sRELOCATABLE
+  -fPIC
   -sALLOW_MEMORY_GROWTH
   -sMEMORY_GROWTH_GEOMETRIC_STEP=0.45
   # -sMAXIMUM_MEMORY=1048576
