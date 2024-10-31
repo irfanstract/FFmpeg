@@ -77,6 +77,7 @@ tools/target_dem_%_fuzzer$(EXESUF): $(FF_DEP_LIBS)
 
 CONFIGURABLE_COMPONENTS =                                           \
     $(wildcard $(FFLIBS:%=$(SRC_PATH)/lib%/all*.c))                 \
+    $(wildcard $(FFLIBS:%=$(SRC_PATH)/lib%/all*.cpp))                 \
     $(SRC_PATH)/libavcodec/bitstream_filters.c                      \
     $(SRC_PATH)/libavcodec/hwaccels.h                               \
     $(SRC_PATH)/libavcodec/parsers.c                                \
@@ -195,6 +196,8 @@ $(sort $(OUTDIRS)):
 # Disable suffix rules.  Most of the builtin rules are suffix rules,
 # so this saves some time on slow systems.
 .SUFFIXES:
+
+.DELETE_ON_ERROR :
 
 .PHONY: all all-yes alltools build check config testprogs
 .PHONY: *clean install* uninstall*

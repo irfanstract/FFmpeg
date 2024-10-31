@@ -30,6 +30,18 @@ cd "$(dirname -- "${BASH_SOURCE[0]}" )"
 
 # see https://github.com/ffmpegwasm/ffmpeg.wasm/blob/7fe8dff16043e86fa129c84acaca271b8a19bec4/build/ffmpeg-wasm.sh#L4 
 
+lboDirPath="./build/ff-ranwithemcp"
+lddPath_for() {
+  eval printf '%s' "$1/$1.so"
+  # eval printf '%s' "$lboDirPath/$1.so"
+}
+
+lbss="so"
+
+for lbname1 in libavcodec libavfilter libavformat libavutil; do
+  cp -T "$lbname1/$lbname1.$lbss" "$lboDirPath/$lbname1.so"       || { exit 1 ; }
+done
+
 libsFlags=(
   # 
   # https://github.com/ffmpegwasm/ffmpeg.wasm/blob/7fe8dff16043e86fa129c84acaca271b8a19bec4/build/ffmpeg-wasm.sh#L10C13-L30C13
@@ -45,14 +57,25 @@ libsFlags=(
   -Llibpostproc 
   -Llibswresample 
   -Llibswscale 
-  -lavcodec 
-  -lavdevice 
-  -lavfilter 
-  -lavformat 
-  -lavutil 
-  # -lpostproc 
-  -lswresample 
-  -lswscale 
+  # -lavcodec 
+  # -lavdevice 
+  # -lavfilter 
+  # -lavformat 
+  # -lavutil 
+  # # -lpostproc 
+  # -lswresample 
+  # -lswscale 
+  # heads to the '.so' files which essentally
+  "$(lddPath_for libavcodec )"
+  "$(lddPath_for libavfilter )"
+  "$(lddPath_for libavformat )"
+  "$(lddPath_for libavdevice )"
+  libavutil/libavutil.so 
+  # libpostproc/libpostproc.so 
+  libswresample/libswresample.so 
+  libswscale/libswscale.so 
+  -sMAIN_MODULE
+  -sERROR_ON_UNDEFINED_SYMBOLS=0
 )
 
 echo "✅ libsFlags: ${libsFlags[@]}"
@@ -87,6 +110,14 @@ sharedConfFlags=(
   -sWASM_BIGINT                            # enable big int support
   -sUSE_SDL=2                              # use emscripten SDL2 lib port
   # -sMODULARIZE                          # modularized to use as a library
+  -sEXPORTED_RUNTIME_METHODS=ccall,cwrap
+  -sDISABLE_EXCEPTION_CATCHING=0
+  -sLINKABLE
+  -sRELOCATABLE
+  -fPIC
+  -sALLOW_MEMORY_GROWTH
+  -sMEMORY_GROWTH_GEOMETRIC_STEP=0.45
+  # -sMAXIMUM_MEMORY=1048576
   ${FFMPEG_MT:+ -sINITIAL_MEMORY=1024MB}   # ALLOW_MEMORY_GROWTH is not recommended when using threads, thus we use a large initial memory
   ${FFMPEG_MT:+ -sPTHREAD_POOL_SIZE=32}    # use 32 threads
   ${FFMPEG_ST:+ -sINITIAL_MEMORY=32MB -sALLOW_MEMORY_GROWTH} # Use just enough memory as memory usage can grow
@@ -97,7 +128,18 @@ sharedConfFlags=(
 
 # see also https://emscripten.org/docs/compiling/Dynamic-Linking.html (https://emscripten.org/docs/compiling/Dynamic-Linking.html#load-time-dynamic-linking ) .
 
-ffConvAppBinPath="./build/ff-ranwithemcp/ffmpeg.js"
+ffConvAppBinPath="$lboDirPath/ffmpeg.js"
+
+# # cp --target-directory="./build/ff-ranwithemcp/"       libavutil/libavutil.so      || { exit 1 ; }
+# # cp --target-directory="./build/ff-ranwithemcp/"      libavcodec/libavcodec.so     || { exit 1 ; }
+# # cp --target-directory="./build/ff-ranwithemcp/"     libavformat/libavformat.so    || { exit 1 ; } 
+# # cp --target-directory="./build/ff-ranwithemcp/"     libavdevice/libavdevice.so    || { exit 1 ; } 
+# # cp --target-directory="./build/ff-ranwithemcp/"     libavfilter/libavfilter.so    || { exit 1 ; } 
+# # cp --target-directory="./build/ff-ranwithemcp/"   libswresample/libswresample.so  || { exit 1 ; } 
+# # cp --target-directory="./build/ff-ranwithemcp/"      libswscale/libswscale.so     || { exit 1 ; }
+# for lbname1 in "libavutil"; do
+#   cp -T "$lbname1/$lbname1.so" "$lboDirPath/$lbname1.so"       || { exit 1 ; }
+# done
 
 ffConvAppBuiltDefaultStaticBuildConfFlags=(
   #
