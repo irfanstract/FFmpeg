@@ -9,6 +9,21 @@
 
 
 
+Module["iext"] = {
+  callMain ,
+  // iac: wasmExports ,
+} ;
+
+/** */
+Module["iac"] ;
+void (() => (Module["iac"] = new Object ) )() ;
+Module.whenLoaded.then(v => { Module["iac"] = wasmExports ; } )
+
+
+
+
+
+
 
 /**
  * in case of ESM imports or imported via `<script ... />`
