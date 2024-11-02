@@ -197,5 +197,7 @@ $(sort $(OUTDIRS)):
 # so this saves some time on slow systems.
 .SUFFIXES:
 
+.DELETE_ON_ERROR :
+
 .PHONY: all all-yes alltools build check config testprogs
 .PHONY: *clean install* uninstall*

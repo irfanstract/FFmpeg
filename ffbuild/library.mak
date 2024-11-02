@@ -69,6 +69,8 @@ $(SUBDIR)$(SLIBNAME_WITH_MAJOR): $(OBJS) $(SHLIBOBJS) $(SLIBOBJS) $(SUBDIR)lib$(
 	$$(LD) $(SHFLAGS) $(LDFLAGS) $(LDSOFLAGS) $$(LD_O) $$(filter %.o,$$^) $(FFEXTRALIBS)
 	$(SLIB_EXTRA_CMD)
 
+.DELETE_ON_ERROR :
+
 ifdef SUBDIR
 $(SUBDIR)$(SLIBNAME_WITH_MAJOR): $(DEP_LIBS)
 endif
@@ -114,6 +116,8 @@ uninstall-headers::
 uninstall-pkgconfig::
 	$(RM) "$(PKGCONFIGDIR)/lib$(FULLNAME).pc"
 endef
+
+.DELETE_ON_ERROR :
 
 $(eval $(RULES))
 
