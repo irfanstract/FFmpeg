@@ -30,6 +30,18 @@ cd "$(dirname -- "${BASH_SOURCE[0]}" )"
 
 # see https://github.com/ffmpegwasm/ffmpeg.wasm/blob/7fe8dff16043e86fa129c84acaca271b8a19bec4/build/ffmpeg-wasm.sh#L4 
 
+lboDirPath="./build/ff-ranwithemcp"
+lddPath_for() {
+  eval printf '%s' "$1/$1.so"
+  # eval printf '%s' "$lboDirPath/$1.so"
+}
+
+lbss="so"
+
+for lbname1 in libavcodec libavfilter libavformat libavutil; do
+  cp -T "$lbname1/$lbname1.$lbss" "$lboDirPath/$lbname1.so"       || { exit 1 ; }
+done
+
 libsFlags=(
   # 
   # https://github.com/ffmpegwasm/ffmpeg.wasm/blob/7fe8dff16043e86fa129c84acaca271b8a19bec4/build/ffmpeg-wasm.sh#L10C13-L30C13
@@ -54,10 +66,10 @@ libsFlags=(
   # -lswresample 
   # -lswscale 
   # heads to the '.so' files which essentally
-  libavcodec/libavcodec.so 
-  libavdevice/libavdevice.so 
-  libavfilter/libavfilter.so 
-  libavformat/libavformat.so 
+  "$(lddPath_for libavcodec )"
+  "$(lddPath_for libavfilter )"
+  "$(lddPath_for libavformat )"
+  "$(lddPath_for libavdevice )"
   libavutil/libavutil.so 
   # libpostproc/libpostproc.so 
   libswresample/libswresample.so 
@@ -116,7 +128,18 @@ sharedConfFlags=(
 
 # see also https://emscripten.org/docs/compiling/Dynamic-Linking.html (https://emscripten.org/docs/compiling/Dynamic-Linking.html#load-time-dynamic-linking ) .
 
-ffConvAppBinPath="./build/ff-ranwithemcp/ffmpeg.js"
+ffConvAppBinPath="$lboDirPath/ffmpeg.js"
+
+# # cp --target-directory="./build/ff-ranwithemcp/"       libavutil/libavutil.so      || { exit 1 ; }
+# # cp --target-directory="./build/ff-ranwithemcp/"      libavcodec/libavcodec.so     || { exit 1 ; }
+# # cp --target-directory="./build/ff-ranwithemcp/"     libavformat/libavformat.so    || { exit 1 ; } 
+# # cp --target-directory="./build/ff-ranwithemcp/"     libavdevice/libavdevice.so    || { exit 1 ; } 
+# # cp --target-directory="./build/ff-ranwithemcp/"     libavfilter/libavfilter.so    || { exit 1 ; } 
+# # cp --target-directory="./build/ff-ranwithemcp/"   libswresample/libswresample.so  || { exit 1 ; } 
+# # cp --target-directory="./build/ff-ranwithemcp/"      libswscale/libswscale.so     || { exit 1 ; }
+# for lbname1 in "libavutil"; do
+#   cp -T "$lbname1/$lbname1.so" "$lboDirPath/$lbname1.so"       || { exit 1 ; }
+# done
 
 ffConvAppBuiltDefaultStaticBuildConfFlags=(
   #
