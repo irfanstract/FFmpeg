@@ -43,6 +43,19 @@ install-headers: install-lib$(NAME)-headers install-lib$(NAME)-pkgconfig
 install-libs-$(CONFIG_STATIC): install-lib$(NAME)-static
 install-libs-$(CONFIG_SHARED): install-lib$(NAME)-shared
 
+# due to how emcc works
+# we're forced to amend the rule '$(SUBDIR)$(SLIBNAME_WITH_MAJOR)' removing the part '$(FFEXTRALIBS)'
+# see https://github.com/emscripten-core/emscripten/issues/22629 .
+# 
+# FYI 'FFEXTRALIBS' is from 'common.mak'
+LD_FFEXTRALIBS := $(FFEXTRALIBS)
+ifeq ($(LD),emcc)
+	LD_FFEXTRALIBS := ""
+endif
+
+# due to how emcc works
+# we're forced to amend the rule '$(SUBDIR)$(SLIBNAME_WITH_MAJOR)' removing the part '$(FFEXTRALIBS)'
+# see https://github.com/emscripten-core/emscripten/issues/22629 .
 define RULES
 $(TOOLS):     THISLIB = $(FULLNAME:%=$(LD_LIB))
 $(TESTPROGS): THISLIB = $(SUBDIR)$(LIBNAME)
@@ -66,7 +79,7 @@ $(SUBDIR)$(SLIBNAME): $(SUBDIR)$(SLIBNAME_WITH_MAJOR)
 
 $(SUBDIR)$(SLIBNAME_WITH_MAJOR): $(OBJS) $(SHLIBOBJS) $(SLIBOBJS) $(SUBDIR)lib$(NAME).ver
 	$(SLIB_CREATE_DEF_CMD)
-	$$(LD) $(SHFLAGS) $(LDFLAGS) $(LDSOFLAGS) $$(LD_O) $$(filter %.o,$$^) $(FFEXTRALIBS)
+	$$(LD) $(SHFLAGS) $(LDFLAGS) $(LDSOFLAGS) $$(LD_O) $$(filter %.o,$$^) $$(LD_FFEXTRALIBS)
 	$(SLIB_EXTRA_CMD)
 
 .DELETE_ON_ERROR :
