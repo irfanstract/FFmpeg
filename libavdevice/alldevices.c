@@ -58,16 +58,33 @@ extern const AVOutputFormat ff_xv_muxer;
 extern const AVInputFormat  ff_libcdio_demuxer;
 extern const AVInputFormat  ff_libdc1394_demuxer;
 
+#define     indev_list        initial_indev_list
+#define    outdev_list       initial_outdev_list
+
+#define static /* not static */
+
 #include "libavdevice/outdev_list.c"
 #include "libavdevice/indev_list.c"
 
+#undef static
+
+#undef     indev_list
+#undef    outdev_list
+
+#include "libavformat/allfmtslist.h"
+
+#define     indev_list        initial_indev_list
+#define    outdev_list       initial_outdev_list
+
 void avdevice_register_all(void)
 {
+    av_log(NULL, AV_LOG_VERBOSE, "[avdevice_register_all] \n") ;
     avpriv_register_devices(outdev_list, indev_list);
 }
 
 static const void *next_input(const AVInputFormat *prev, AVClassCategory c2)
 {
+    av_init_mndvs() ;
     const AVClass *pc;
     const AVClassCategory c1 = AV_CLASS_CATEGORY_DEVICE_INPUT;
     AVClassCategory category = AV_CLASS_CATEGORY_NA;
@@ -94,6 +111,7 @@ static const void *next_input(const AVInputFormat *prev, AVClassCategory c2)
 
 static const void *next_output(const AVOutputFormat *prev, AVClassCategory c2)
 {
+    av_init_mndvs() ;
     const AVClass *pc;
     const AVClassCategory c1 = AV_CLASS_CATEGORY_DEVICE_OUTPUT;
     AVClassCategory category = AV_CLASS_CATEGORY_NA;

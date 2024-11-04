@@ -544,52 +544,18 @@ extern const AVInputFormat  ff_libmodplug_demuxer;
 extern const AVInputFormat  ff_libopenmpt_demuxer;
 extern const AVInputFormat  ff_vapoursynth_demuxer;
 
+#define     muxer_list     initial_muxer_list0
+#define   demuxer_list   initial_demuxer_list0
+
+#define static /* not static */
+
 #include "libavformat/muxer_list.c"
 #include "libavformat/demuxer_list.c"
 
-static atomic_uintptr_t indev_list_intptr  = ATOMIC_VAR_INIT(0);
-static atomic_uintptr_t outdev_list_intptr = ATOMIC_VAR_INIT(0);
+#undef static
 
-const AVOutputFormat *av_muxer_iterate(void **opaque)
-{
-    static const uintptr_t size = sizeof(muxer_list)/sizeof(muxer_list[0]) - 1;
-    uintptr_t i = (uintptr_t)*opaque;
-    const AVOutputFormat *f = NULL;
-    uintptr_t tmp;
+#undef     muxer_list
+#undef   demuxer_list
 
-    if (i < size) {
-        f = muxer_list[i];
-    } else if (tmp = atomic_load_explicit(&outdev_list_intptr, memory_order_relaxed)) {
-        const AVOutputFormat *const *outdev_list = (const AVOutputFormat *const *)tmp;
-        f = outdev_list[i - size];
-    }
-
-    if (f)
-        *opaque = (void*)(i + 1);
-    return f;
-}
-
-const AVInputFormat *av_demuxer_iterate(void **opaque)
-{
-    static const uintptr_t size = sizeof(demuxer_list)/sizeof(demuxer_list[0]) - 1;
-    uintptr_t i = (uintptr_t)*opaque;
-    const AVInputFormat *f = NULL;
-    uintptr_t tmp;
-
-    if (i < size) {
-        f = demuxer_list[i];
-    } else if (tmp = atomic_load_explicit(&indev_list_intptr, memory_order_relaxed)) {
-        const AVInputFormat *const *indev_list = (const AVInputFormat *const *)tmp;
-        f = indev_list[i - size];
-    }
-
-    if (f)
-        *opaque = (void*)(i + 1);
-    return f;
-}
-
-void avpriv_register_devices(const AVOutputFormat * const o[], const AVInputFormat * const i[])
-{
-    atomic_store_explicit(&outdev_list_intptr, (uintptr_t)o, memory_order_relaxed);
-    atomic_store_explicit(&indev_list_intptr,  (uintptr_t)i, memory_order_relaxed);
-}
+const AVOutputFormat *const * const initial_muxer_list   =   initial_muxer_list0 ;
+const  AVInputFormat *const * const initial_demuxer_list = initial_demuxer_list0 ;

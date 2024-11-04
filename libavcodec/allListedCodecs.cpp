@@ -7,19 +7,15 @@
 
 
 extern "C" {
-    //
+//
 
 #include <stdint.h>
 #include <string.h>
 
-#include "config.h"
-#include "config_components.h"
-#include "libavutil/thread.h"
-#include "codec.h"
-#include "codec_id.h"
-#include "codec_internal.h"
+//
+#include <libavutil/avstring.h>
 
-    //
+//
 }
 
 #include <vector>
@@ -32,24 +28,33 @@ extern "C" {
 
 
 extern "C" {
-//
-
-//
-}
-
-extern "C" {
-//
-
-#include <libavutil/avstring.h>
-#include <libavutil/log.h>
-
-//
-}
-
-extern "C" {
-//
+    //
 
 #include <stdio.h>
+
+    //
+}
+
+// most fflibs's C headers don't anticipate usage from C++
+extern "C" {
+//
+
+#include <libavutil/log.h>
+
+#include "config.h"
+#include "config_components.h"
+#include "libavutil/thread.h"
+#include "codec.h"
+#include "codec_id.h"
+#include "codec_internal.h"
+
+//
+}
+
+#include "libavutil/glpr.hpp"
+
+extern "C" {
+//
 
 //
 }
@@ -66,60 +71,7 @@ static void av_codec_init_one(FFCodec* c )
     }
 }
 
-extern "C" {
-//
-
-extern FFCodec const * const * const initial_codec_list ;
-
-// static FFCodec const * const * codec_list = initial_codec_list ;
-// static std::vector<FFCodec const *> codec_list = av_from_nullterminated_1(initial_codec_list) ;
-
-#define codec_list codec_list_impl
-
-static std::vector<FFCodec const *> codec_list ;
-
-#define av_codec_init_static av_codec_init_static_impl
-
-static AVOnce av_codec_static_init = AV_ONCE_INIT;
-static void av_codec_init_static_impl(void)
-{
-    av_log(NULL, AV_LOG_VERBOSE, "[av_codec_init_static] \n") ;
-
-    codec_list = av_from_nullterminated_1(initial_codec_list) ;
-
-    fprintf(stderr , "codec count: %d ;" , codec_list.size() ) ;
-    for (int i = 0; i < codec_list.size() ; i++) {
-        fprintf(stderr , "codec %d, " , i ) ;
-        av_codec_init_one((FFCodec* ) codec_list[i] ) ;
-    }
-    fprintf(stderr , "\n" ) ;
-}
-
-#undef codec_list
-
-#undef av_codec_init_static
-
-static void av_codec_init_static(void) {
-    ff_thread_once(&av_codec_static_init, av_codec_init_static_impl) ;
-}
-
-int av_codec_register(FFCodec * descRef) {
-
-    //
-    av_log(NULL, AV_LOG_VERBOSE, "[av_codec_register] late-registering codec '%s' \n", descRef->p.name) ;
-
-    av_codec_init_one(descRef) ;
-
-    codec_list_impl.push_back(descRef) ;
-
-    ;
-    av_log(NULL, AV_LOG_VERBOSE, "[av_codec_register] successfully late-registered codec '%s' \n", descRef->p.name ) ;
-
-    return 0 ;
-}
-
-//
-}
+AV_LSST_FOR_ASPECT(codec, FFCodec, descRef->p.name )
 
 extern "C" {
 //
