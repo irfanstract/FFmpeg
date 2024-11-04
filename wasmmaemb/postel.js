@@ -17,7 +17,7 @@ Module["iext"] = {
 /** */
 Module["iac"] ;
 void (() => (Module["iac"] = new Object ) )() ;
-Module.whenLoaded.then(v => { Module["iac"] = wasmExports ; } )
+Module.whenLoaded.then(v => { Module["iac"] = { wasmExports, wasmImports, } ; } )
 
 
 
