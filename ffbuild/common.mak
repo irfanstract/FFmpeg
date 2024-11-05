@@ -45,6 +45,8 @@ ASFLAGS    := $(CPPFLAGS) $(ASFLAGS)
 $(call PREPEND,CXXFLAGS, CPPFLAGS CFLAGS)
 X86ASMFLAGS += $(IFLAGS:%=%/) -I$(<D)/ -Pconfig.asm
 
+CPPFLAGS   := $(CPPFLAGS) -g
+
 HOSTCCFLAGS = $(IFLAGS) $(HOSTCPPFLAGS) $(HOSTCFLAGS)
 # see https://github.com/emscripten-core/emscripten/issues/22629 .
 # ifneq ($(LD),emcc)

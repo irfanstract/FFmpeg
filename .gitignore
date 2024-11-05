@@ -61,3 +61,9 @@ git-checkout-and-merge-wasmbuildffmpegsh.cmd
 # !lib*/lib*.ver*
 
 
+
+
+# !libavco*/libav*.so*
+# !libavfo*/libav*.so*
+
+

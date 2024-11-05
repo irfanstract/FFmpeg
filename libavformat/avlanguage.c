@@ -762,3 +762,7 @@ const char *ff_convert_lang_to(const char *lang, enum AVLangCodespace target_cod
 
     return NULL;
 }
+
+int ff_lang_noop(void) {
+    return 0 ;
+}

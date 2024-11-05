@@ -76,8 +76,11 @@ libsFlags=(
   libswresample/libswresample.so 
   libswscale/libswscale.so 
   -sMAIN_MODULE
-  -sERROR_ON_UNDEFINED_SYMBOLS=0
+  # -sERROR_ON_UNDEFINED_SYMBOLS=0
+  -g
 )
+
+test "0" == "1" && { echo "${libsFlags[@]}" ; exit 1 ; }
 
 echo "✅ libsFlags: ${libsFlags[@]}"
 
@@ -108,7 +111,7 @@ sharedConfFlags=(
   -O0
   $LDFLAGS 
   # -sWASM=0
-  -sWASM_BIGINT                            # enable big int support
+  # -sWASM_BIGINT                            # enable big int support
   -sUSE_SDL=2                              # use emscripten SDL2 lib port
   # -sMODULARIZE                          # modularized to use as a library
   -sEXPORTED_RUNTIME_METHODS=ccall,cwrap
@@ -249,9 +252,11 @@ fi
 
 PATH="/c/Users/62857/X-Dev-Runtimes/node-v20.11.1-win-x64:$PATH"
 
-{ node ./build/ff-ranwithemcp/ffmpeg.js -loglevel verbose -f lavfi -i testsrc2=duration=5.1 -f null -c:v rawvideo myvideo ; } || exit 1
+if test "0" == "1"; then
+  { node ./build/ff-ranwithemcp/ffmpeg.js -loglevel verbose -f lavfi -i testsrc2=duration=5.1 -f null -c:v rawvideo myvideo ; } || exit 1
 
-{ exit 0 ; }
+  { exit 0 ; }
+fi
 { node ./test1.mjs ; exit 0 ; }
 
 

@@ -55,7 +55,7 @@ toolchainSelectingArgs=(
 
 )
 # the glag '-fPIC' seema be ignored for WASM targets (presently); there's also offered LD option '--experimental-pic' (on 'wasm-ld')
-bincompatClrFlags="    -s LINKABLE -s RELOCATABLE -s SIDE_MODULE -fPIC -Wl,--experimental-pic   -sWASM_BIGINT  "  # a dependency 
+bincompatClrFlags="    -s LINKABLE -s RELOCATABLE -s SIDE_MODULE -fPIC -Wl,--experimental-pic   -sWASM_BIGINT   -g  "  # a dependency 
 bincompatCcFlags=" ${bincompatClrFlags[@]}  "
 # systemDepsCcFlags="   -s USE_PTHREADS" # a dependency 
 systemDepsCcFlags="   " # a dependency 
